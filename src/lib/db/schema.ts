@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS requests (
   submitted_at timestamptz NOT NULL DEFAULT now(),
   processed_at timestamptz
 );
+ALTER TABLE requests ADD COLUMN IF NOT EXISTS input_mode text NOT NULL DEFAULT 'text';
 CREATE INDEX IF NOT EXISTS requests_region_time ON requests (region_code, submitted_at);
 CREATE INDEX IF NOT EXISTS requests_region_cell ON requests (region_code, h3_cell);
 CREATE INDEX IF NOT EXISTS requests_region_cat ON requests (region_code, category);

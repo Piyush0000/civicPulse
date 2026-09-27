@@ -166,7 +166,7 @@ async function seedRegion(region: RegionDef, now: Date, log: Progress) {
       id, code, reporterIds.get(x.reporterKey), x.trackingCode, x.channel, x.language, redactRegex(x.textOriginal), redactRegex(x.textEnglish),
       x.category, x.subcategory, x.urgency, x.urgencyReason, x.summary, x.affectedGroup, x.locationText, x.precision, x.admin,
       x.lat, x.lng, x.h3, embedding, clusterId, x.isActionable, x.isSpam, "completed", x.confidence, "synthetic ground truth",
-      status, true, x.submittedAt, new Date(x.submittedAt.getTime() + 8000),
+      status, true, x.submittedAt, new Date(x.submittedAt.getTime() + 8000), x.contentType === "audio" ? "voice" : "text",
     ]);
   }
   await log(`writing ${rows.length} requests`, 55);
@@ -181,7 +181,7 @@ async function seedRegion(region: RegionDef, now: Date, log: Progress) {
   await bulkInsert(
     db,
     "requests",
-    ["id", "region_code", "reporter_id", "tracking_code", "channel", "language_detected", "text_original_redacted", "text_english_redacted", "category", "subcategory", "urgency", "urgency_reason", "summary", "affected_group", "location_text", "location_precision", "admin_name", "lat", "lng", "h3_cell", "embedding", "cluster_id", "is_actionable", "is_spam", "pipeline_status", "extraction_confidence", "extraction_provider", "status", "is_synthetic", "submitted_at", "processed_at"],
+    ["id", "region_code", "reporter_id", "tracking_code", "channel", "language_detected", "text_original_redacted", "text_english_redacted", "category", "subcategory", "urgency", "urgency_reason", "summary", "affected_group", "location_text", "location_precision", "admin_name", "lat", "lng", "h3_cell", "embedding", "cluster_id", "is_actionable", "is_spam", "pipeline_status", "extraction_confidence", "extraction_provider", "status", "is_synthetic", "submitted_at", "processed_at", "input_mode"],
     rows,
   );
   // Cluster labels: representative summary without the location tail (cheap, deterministic).
