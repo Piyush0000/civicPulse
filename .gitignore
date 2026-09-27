@@ -42,3 +42,4 @@ next-env.d.ts
 
 # local data (PGlite db, audio)
 /.data
+!.env.example

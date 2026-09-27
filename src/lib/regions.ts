@@ -94,7 +94,7 @@ export const REGIONS: RegionDef[] = [
     usdRate: 0.18,
     peakDensityPerKm2: 18000,
     timezone: "America/Recife",
-    syntheticRequests: 1500,
+    syntheticRequests: 2200,
     // Crude coastline: the Atlantic lies east of this line.
     isLand: (lat, lng) => lng < -34.868 + 0.208 * (lat + 8.0),
     localities: [
@@ -132,7 +132,7 @@ export const REGIONS: RegionDef[] = [
     usdRate: 0.055,
     peakDensityPerKm2: 14000,
     timezone: "Africa/Johannesburg",
-    syntheticRequests: 1200,
+    syntheticRequests: 2000,
     localities: [
       { name: "Soweto", lat: -26.2485, lng: 27.854, vuln: 0.78, density: 0.95 },
       { name: "Johannesburg CBD", aliases: ["CBD", "Joburg CBD"], lat: -26.2041, lng: 28.0473, vuln: 0.45, density: 0.8 },
@@ -169,7 +169,7 @@ export const REGIONS: RegionDef[] = [
     usdRate: 0.011,
     peakDensityPerKm2: 12000,
     timezone: "Europe/Moscow",
-    syntheticRequests: 800,
+    syntheticRequests: 1600,
     localities: [
       { name: "Vakhitovsky", local: "Вахитовский", lat: 55.79, lng: 49.13, vuln: 0.2, density: 0.8 },
       { name: "Kremlin", local: "Кремль", lat: 55.799, lng: 49.106, vuln: 0.1, density: 0.4 },
@@ -201,7 +201,7 @@ export const REGIONS: RegionDef[] = [
     usdRate: 0.14,
     peakDensityPerKm2: 28000,
     timezone: "Asia/Shanghai",
-    syntheticRequests: 1000,
+    syntheticRequests: 1800,
     localities: [
       { name: "Jinjiang", local: "锦江", lat: 30.656, lng: 104.083, vuln: 0.2, density: 0.9 },
       { name: "Qingyang", local: "青羊", lat: 30.674, lng: 104.061, vuln: 0.2, density: 0.85 },
