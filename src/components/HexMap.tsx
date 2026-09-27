@@ -55,6 +55,7 @@ export default function HexMap(props: {
   opacity?: number;
   className?: string;
   autoRotate?: boolean;
+  padLeftRatio?: number; // shift the visual centre right (e.g. hero map behind text)
 }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -78,6 +79,7 @@ export default function HexMap(props: {
     if (props.interactive !== false) m.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
     const ov = new MapboxOverlay({ interleaved: false, layers: [] });
     m.addControl(ov as unknown as maplibregl.IControl);
+    if (props.padLeftRatio) m.setPadding({ left: Math.round(el.current.clientWidth * props.padLeftRatio), top: 0, right: 0, bottom: 0 });
     map.current = m;
     overlay.current = ov;
     m.on("load", () => setReady(true));

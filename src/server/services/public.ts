@@ -63,24 +63,28 @@ export async function publicRegions() {
 /** Public, k-anonymous aggregates on a coarser (res 7) grid. */
 export async function publicStats(region: string) {
   const reg = getRegion(region);
-  const rows = await q<{ h3_cell: string; category: string; request_count_90d: number; unique_reporters_90d: number; is_hotspot: boolean }>(
-    "SELECT h3_cell, category, request_count_90d, unique_reporters_90d, is_hotspot FROM cell_scores WHERE region_code=$1 AND request_count_90d > 0",
+  // Last 180 days on a coarser res-7 grid; a cell is published only with >= k distinct reporters.
+  const rows = await q<{ h3_cell: string; category: string; reporter_id: string | null }>(
+    `SELECT h3_cell, category, reporter_id FROM requests
+      WHERE region_code=$1 AND h3_cell IS NOT NULL AND is_actionable AND submitted_at > now() - interval '180 days'`,
     [region],
   );
-  const agg = new Map<string, { h: string; requests: number; reporters: number; hotspot: boolean; top: Map<string, number> }>();
+  const hot = new Set(
+    (await q<{ h3_cell: string }>("SELECT DISTINCT h3_cell FROM cell_scores WHERE region_code=$1 AND is_hotspot", [region])).map((r) => cellToParent(r.h3_cell, 7)),
+  );
+  const agg = new Map<string, { h: string; requests: number; reporters: Set<string>; top: Map<string, number> }>();
   for (const r of rows) {
     const p = cellToParent(r.h3_cell, 7);
-    const a = agg.get(p) ?? { h: p, requests: 0, reporters: 0, hotspot: false, top: new Map() };
-    a.requests += r.request_count_90d;
-    a.reporters += r.unique_reporters_90d;
-    a.hotspot ||= r.is_hotspot;
-    a.top.set(r.category, (a.top.get(r.category) || 0) + r.request_count_90d);
+    const a = agg.get(p) ?? { h: p, requests: 0, reporters: new Set<string>(), top: new Map() };
+    a.requests++;
+    if (r.reporter_id) a.reporters.add(r.reporter_id);
+    a.top.set(r.category, (a.top.get(r.category) || 0) + 1);
     agg.set(p, a);
   }
   const k = config.kAnonThreshold;
   const cells = [...agg.values()]
-    .filter((a) => a.reporters >= k)
-    .map((a) => ({ h: a.h, requests: a.requests, hotspot: a.hotspot, top: [...a.top.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] }));
+    .filter((a) => a.reporters.size >= k)
+    .map((a) => ({ h: a.h, requests: a.requests, hotspot: hot.has(a.h), top: [...a.top.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] }));
   const cats = await q<{ category: string; n: number }>(
     "SELECT category, count(*)::int n FROM requests WHERE region_code=$1 AND is_actionable AND submitted_at > now() - interval '90 days' GROUP BY 1 ORDER BY 2 DESC",
     [region],
