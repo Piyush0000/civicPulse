@@ -172,8 +172,8 @@ export function computeScores(input: {
     }
     const withData = count90.filter((c) => c > 0).length;
     let gi: { z: number[]; p: number[] } | null = null;
-    // Spec asks for >= 30 cells with data; small pilot grids scale that down (min 12).
-    const minCells = input.minCellsWithData ?? Math.min(30, Math.max(12, Math.round(n * 0.04)));
+    // Spec asks for >= 30 cells with data; small pilot grids scale that down to 2% of cells (min 10).
+    const minCells = input.minCellsWithData ?? Math.min(30, Math.max(10, Math.round(n * 0.02)));
     if (withData >= minCells) {
       gi = getisOrdGiStar(
         cells.map((c) => c.h3),

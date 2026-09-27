@@ -47,7 +47,7 @@ export const T: Record<UiLang, Dict> = {
     city: "City",
     describe: "What is the problem, and where?",
     placeholder: "e.g. The handpump near the school in Sangam Vihar has been broken for 3 weeks…",
-    record: "Hold nothing, just tap to speak",
+    record: "Tap to speak",
     stop: "Stop recording",
     recording: "Listening…",
     heard: "We heard",

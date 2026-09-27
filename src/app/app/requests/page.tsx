@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, MapPinOff, Search, X } from "lucide-react";
 import { CATEGORIES, catLabel } from "@/lib/categories";
@@ -24,12 +24,15 @@ function RequestsInner() {
   const { code, region } = useRegion();
   const sp = useSearchParams();
   const [f, setF] = useState({ q: "", category: "", urgency: "", status: "", channel: "", language: "", pipeline: sp.get("pipeline") || "", unlocated: false, live: false });
-  const [page, setPage] = useState(1);
   const [open, setOpen] = useState<string | null>(null);
+  // Page resets whenever filters or region change (derived, no effect needed).
+  const filterKey = JSON.stringify(f) + code;
+  const [pageState, setPageState] = useState({ key: filterKey, page: 1 });
+  const page = pageState.key === filterKey ? pageState.page : 1;
+  const setPage = (n: number) => setPageState({ key: filterKey, page: n });
   const qs = new URLSearchParams({ region: code, page: String(page), page_size: "40" });
   for (const [k, v] of Object.entries(f)) if (v) qs.set(k, String(v));
   const list = useApi<{ total: number; rows: Row[] }>(`/requests?${qs}`, [qs.toString()]);
-  useEffect(() => setPage(1), [f, code]);
   const pages = Math.max(1, Math.ceil((list.data?.total ?? 0) / 40));
 
   const sel = (k: keyof typeof f, opts: { v: string; l: string }[], label: string) => (

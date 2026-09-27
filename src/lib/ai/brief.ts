@@ -37,6 +37,7 @@ export function unverifiedNumbers(markdown: string, payload: unknown): string[] 
     }
   };
   addNums(JSON.stringify(payload));
+  allowed.add("100"); // the 0-100 score scale
   const text = markdown.replace(/\[D\d+\]/g, "");
   const bad = new Set<string>();
   for (const m of text.match(/\d[\d,]*(?:\.\d+)?/g) || []) {

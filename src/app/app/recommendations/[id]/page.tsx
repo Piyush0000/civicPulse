@@ -189,7 +189,7 @@ export default function RecommendationDetail({ params }: { params: Promise<{ id:
                 <button className="btn-danger" onClick={() => decide("rejected")} disabled={!!busy}><X className="h-4 w-4" /> Reject</button>
               </div>
               {msg && <p className="mt-3 flex items-start gap-1.5 text-xs text-accent"><Hash className="mt-0.5 h-3.5 w-3.5 shrink-0" />{msg}</p>}
-              <p className="mt-3 text-[11px] text-faint">Accepting links the area's open requests to this project and notifies citizens who left a reply channel.</p>
+              <p className="mt-3 text-[11px] text-faint">Accepting links the area&apos;s open requests to this project and notifies citizens who left a reply channel.</p>
             </Section>
           )}
 

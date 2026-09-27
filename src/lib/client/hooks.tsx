@@ -30,7 +30,9 @@ export function useApi<T>(path: string | null, deps: unknown[] = []) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!!path);
   const seq = useRef(0);
+  const key = JSON.stringify(deps);
   const load = useCallback(async () => {
+    void key; // refetch when caller-provided deps change
     if (!path) return;
     const my = ++seq.current;
     setLoading(true);
@@ -42,13 +44,14 @@ export function useApi<T>(path: string | null, deps: unknown[] = []) {
       }
     } catch (e) {
       if (my === seq.current) setError((e as Error).message);
-      if ((e as ClientError).status === 401 && typeof window !== "undefined") window.location.href = `/login?next=${encodeURIComponent(location.pathname)}`;
+      if ((e as ClientError).status === 401 && typeof window !== "undefined") window.location.assign(`${location.origin}/login?next=${encodeURIComponent(location.pathname)}`);
     } finally {
       if (my === seq.current) setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, ...deps]);
+  }, [path, key]);
   useEffect(() => {
+    // Fetch-on-mount/change: the loading flag flips synchronously by design.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
   return { data, error, loading, reload: load, setData };

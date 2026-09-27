@@ -46,6 +46,7 @@ sys("POST", "/admin/seed", "seed", "Wipe and regenerate the synthetic demo world
   after(() => seedAll({ reset: true }).catch((e) => console.error(e)));
   return { started: true };
 });
+sys("POST", "/admin/retention", "seed", "Run the privacy retention cleanup now", async () => (await import("@/lib/retention")).retentionCleanup());
 sys("POST", "/admin/recompute", "tuneScoring", "Recompute scores, hotspots and recommendations for a region", async ({ region }) =>
   recomputeRegion(region(), { briefsTopN: 5, useLLM: false }),
 );

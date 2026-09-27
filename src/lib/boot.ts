@@ -33,4 +33,9 @@ export async function boot() {
     console.error("[civicpulse] boot failed", e);
   }
   startTelegramPolling();
+  // Retention housekeeping every 12h (serverless deployments call POST /api/v1/admin/retention from a free cron).
+  const { retentionCleanup } = await import("./retention");
+  const run = () => void retentionCleanup().catch((e) => console.error("[retention]", e));
+  setTimeout(run, 60_000);
+  setInterval(run, 12 * 3600_000).unref?.();
 }

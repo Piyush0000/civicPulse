@@ -48,8 +48,12 @@ function Shell({ children }: { children: ReactNode }) {
   const me = useApi<Me>("/auth/me");
   const status = useApi<Status>("/system/status");
   const [open, setOpen] = useState(false);
-  const [lastPulse, setLastPulse] = useState<number>(0);
-  const live = usePulse(code, (e) => e.type === "request" && setLastPulse(Date.now()));
+  const [flash, setFlash] = useState(false);
+  const live = usePulse(code, (e) => {
+    if (e.type !== "request") return;
+    setFlash(true);
+    setTimeout(() => setFlash(false), 3000);
+  });
   useInterval(() => status.reload(), status.data?.seed?.status === "running" ? 2000 : null);
 
   const aiLive = status.data?.providers.llm.some((l) => !l.startsWith("rules"));
@@ -130,7 +134,7 @@ function Shell({ children }: { children: ReactNode }) {
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden items-center gap-2 text-xs text-mute md:flex" title={live ? "Live stream connected" : "Connecting…"}>
               <span className="relative flex h-2.5 w-2.5">
-                {live && Date.now() - lastPulse < 3000 && <span className="cp-ping absolute inline-flex h-full w-full rounded-full bg-accent" />}
+                {live && flash && <span className="cp-ping absolute inline-flex h-full w-full rounded-full bg-accent" />}
                 <span className={cx("relative inline-flex h-2.5 w-2.5 rounded-full", live ? "bg-ok" : "bg-faint")} />
               </span>
               {live ? "Live" : "Offline"}
