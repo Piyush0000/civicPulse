@@ -142,7 +142,8 @@ async function ruleCopilot(region: string, question: string, run: (n: string, a:
   const cat = CATEGORIES.find((c) => ql.includes(c.replace(/_.*/, "")) || ql.includes(catLabel(c).toLowerCase().split(" ")[0]));
   const lines: string[] = [];
   const name = getRegion(region).name;
-  if (/brics|compare|countr|cities|federat/.test(ql)) {
+  const isBudget = /budget|spend|invest|fund|misalign/.test(ql) && !/brics|countries|cities/.test(ql);
+  if (!isBudget && /brics|compare (the )?(cities|countries|pilots)|countries|cities|federat/.test(ql)) {
     const rows = (await run("compare_brics_cities", {})) as { city: string; population: number; misalignment: number; topCategories: { category: string; per100k: number }[] }[];
     lines.push(`**BRICS pilot comparison** (aggregate-only, k-anonymous):`);
     for (const r of rows) lines.push(`- **${r.city}**: top need ${catLabel(r.topCategories[0]?.category ?? "other")} (${r.topCategories[0]?.per100k ?? 0} requests per 100k in 90 days), budget misalignment index ${r.misalignment}.`);

@@ -14,7 +14,7 @@ import { hashString, rng } from "../stats";
 import { generateRequests } from "./synthetic";
 import { buildWorld } from "./world";
 
-export const SEED_VERSION = 3;
+export const SEED_VERSION = 4;
 
 export const DEMO_USERS = [
   { email: "admin@civicpulse.local", name: "Asha Admin", role: "admin" },
