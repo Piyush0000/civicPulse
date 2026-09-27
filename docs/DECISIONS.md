@@ -1,0 +1,21 @@
+# Decisions
+
+| Date | Decision | Reason |
+|---|---|---|
+| 2026-09-27 | No Docker, no Ollama, no paid services (team constraint). Next.js full-stack instead of FastAPI + Celery + Redis. | One deployable that runs with `npm run dev` and deploys free on Vercel. |
+| 2026-09-27 | PGlite (embedded Postgres) by default, Supabase via `DATABASE_URL`. | Real Postgres semantics with zero install; the same SQL on both. |
+| 2026-09-27 | No PostGIS: geography is modelled entirely on the H3 grid (lat/lng + cell ids). | The analytics are H3-native; this avoids extension incompatibilities between PGlite and hosted Postgres. |
+| 2026-09-27 | Embeddings stored as `real[]` with cosine in JS; deterministic hashed n-gram embeddings on the English pivot. | PGlite's pgvector build is a separate early package; candidate sets are small (k-ring filtered). The translation step makes lexical similarity cross-lingual. |
+| 2026-09-27 | Region boundaries approximated as H3 discs (+ a coastline mask for Recife). | Offline and deterministic; real boundaries can be loaded later. |
+| 2026-09-27 | Free AI chain: Groq (Whisper + Llama 3.3) → Gemini → rule-based offline pipeline. | Speed and free tiers, with graceful degradation to fully offline. |
+| 2026-09-27 | Browser Web Speech transcript is sent alongside audio. | Voice works even without server STT keys. |
+| 2026-09-27 | MyMemory public API as the translation fallback. | Free and keyless; used only when no LLM key is configured. |
+| 2026-09-27 | Gi* p-values from 199 conditional permutations (spec: 999). | 5× faster recompute on every intake; results at α = 0.05 are stable. |
+| 2026-09-27 | Minimum cells with data for Gi*: `min(30, max(10, 2% of cells))` instead of a flat 30. | Small pilot grids (Recife: 241 cells) otherwise never qualify; a test caught a missed planted hotspot in Chengdu. |
+| 2026-09-27 | Demand percentile keeps zero-demand cells at D = 0. | A plain percentile rank gave "no requests" cells a mid-rank. |
+| 2026-09-27 | Recommendation evidence floor: a hotspot cell, or ≥ 8 requests from ≥ 5 reporters. | Prevents areas with 3–4 requests from outranking real hotspots on latent need alone. |
+| 2026-09-27 | Recommendation upsert by exact fingerprint, else Jaccard ≥ 0.4 within the category. | Keeps decision status when areas shift slightly on recompute. |
+| 2026-09-27 | Sequential single-hue map ramp; hotspot and emerging state as outlines. | Data-viz rule: magnitude = one hue; state never rides on fill colour alone. |
+| 2026-09-27 | Federation aggregates signed with HMAC (demo key). | Shows the protocol; production would use per-country Ed25519 keys. |
+| 2026-09-27 | USSD handler speaks the Africa's Talking callback format. | The most common gateway format in the pilot geographies; any gateway can adapt. |
+| 2026-09-27 | Twilio/WhatsApp dropped. | Paid; Telegram, USSD and IVR cover the channels for free. |
