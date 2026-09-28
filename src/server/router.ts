@@ -79,7 +79,7 @@ pub("POST", "/public/requests", null, "Submit a request (multipart: text?, audio
   if (form.get("consent") !== "true") throw new ApiError(400, "consent_required", "Consent is required");
   const region = String(form.get("region_code") || "");
   if (!REGION_BY_CODE[region]) throw new ApiError(400, "bad_region", "Unknown region");
-  const text = String(form.get("text") || "").slice(0, 4000);
+  let text = String(form.get("text") || "").slice(0, 4000);
   const transcript = String(form.get("transcript") || "").slice(0, 4000);
   const audio = form.get("audio");
   let audioData: { data: Buffer; mime: string } | null = null;
@@ -88,6 +88,31 @@ pub("POST", "/public/requests", null, "Submit a request (multipart: text?, audio
     audioData = { data: Buffer.from(await audio.arrayBuffer()), mime: audio.type || "audio/webm" };
   }
   if (!text && !audioData && !transcript) throw new ApiError(400, "empty", "Provide text or a voice note");
+
+  const photo = form.get("photo");
+  let photoUrl: string | null = null;
+  if (photo && typeof photo !== "string" && photo.size > 0) {
+    const { v2: cloudinary } = await import("cloudinary");
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "hglonsuu",
+      api_key: process.env.CLOUDINARY_API_KEY || "344452153514944",
+      api_secret: process.env.CLOUDINARY_API_SECRET || "tQsLfT1364ddMuNCb6DZPb5IJiY",
+    });
+    const buffer = Buffer.from(await photo.arrayBuffer());
+    const b64 = buffer.toString("base64");
+    const dataUri = `data:${photo.type || "image/jpeg"};base64,${b64}`;
+    try {
+      const res = await cloudinary.uploader.upload(dataUri, { folder: "civicpulse_reports" });
+      photoUrl = res.secure_url;
+    } catch (e) {
+      console.error("Cloudinary upload failed", e);
+    }
+  }
+
+  if (photoUrl) {
+    text = [text, `[Attached Photo](${photoUrl})`].filter(Boolean).join("\n\n");
+  }
+
   const lat = form.get("lat") ? Number(form.get("lat")) : null;
   const lng = form.get("lng") ? Number(form.get("lng")) : null;
   const anon = req.cookies.get("cp_anon")?.value || crypto.randomUUID();

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, Loader2, LocateFixed, MapPin, Mic, Square, WifiOff } from "lucide-react";
+import { Check, Copy, Loader2, LocateFixed, MapPin, Mic, Square, WifiOff, Camera, Image as ImageIcon } from "lucide-react";
 import PublicNav from "@/components/PublicNav";
 import { REGIONS, getRegion } from "@/lib/regions";
 import { T, UI_LANGS, type UiLang } from "@/lib/client/i18n";
@@ -41,6 +41,8 @@ export default function SubmitPage() {
   const [consent, setConsent] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number; label: string } | null>(null);
   const [locating, setLocating] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [rec, setRec] = useState<{ blob: Blob; url: string; secs: number } | null>(null);
   const [recording, setRecording] = useState(false);
   const [secs, setSecs] = useState(0);
@@ -179,6 +181,7 @@ export default function SubmitPage() {
       fd.set("lat", String(coords.lat));
       fd.set("lng", String(coords.lng));
     }
+    if (photo) fd.set("photo", photo, photo.name);
     if (rec) fd.set("audio", rec.blob, "voice.webm");
     try {
       if (!navigator.onLine) throw new TypeError("offline");
@@ -275,12 +278,33 @@ export default function SubmitPage() {
             {coords && <div className="mt-2 flex items-center gap-1.5 text-xs text-ok"><MapPin className="h-3.5 w-3.5" /> {t.locationSet}: {coords.label}</div>}
           </div>
 
+          <div>
+            <div className="label">Photo (Required)</div>
+            <div className="flex gap-3">
+              <label className="btn-ghost flex-1 cursor-pointer text-xs flex items-center justify-center gap-2">
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) { setPhoto(f); setPhotoPreview(URL.createObjectURL(f)); }
+                }} />
+                <ImageIcon className="h-4 w-4" /> Upload from device
+              </label>
+              <label className="btn-ghost flex-1 cursor-pointer text-xs flex items-center justify-center gap-2">
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) { setPhoto(f); setPhotoPreview(URL.createObjectURL(f)); }
+                }} />
+                <Camera className="h-4 w-4" /> Take a picture
+              </label>
+            </div>
+            {photoPreview && <img src={photoPreview} alt="Preview" className="mt-3 max-h-48 rounded-xl object-cover" />}
+          </div>
+
           <label className="flex cursor-pointer items-start gap-3 text-sm text-mute">
             <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--accent)]" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
             {t.consent}
           </label>
           {err && <p className="text-sm text-bad">{err}</p>}
-          <button className="btn-primary py-3 text-base" onClick={submit} disabled={busy || !consent || (!text.trim() && !rec && !transcript)}>
+          <button className="btn-primary py-3 text-base" onClick={submit} disabled={busy || !consent || (!text.trim() && !rec && !transcript) || !photo}>
             {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : null} {busy ? t.sending : t.submit}
           </button>
           <p className="text-center text-xs text-faint">{t.privacy}</p>
