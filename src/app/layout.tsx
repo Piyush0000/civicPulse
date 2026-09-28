@@ -8,7 +8,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: { default: "CivicPulse: citizen voice to public investment", template: "%s · CivicPulse" },
   description:
-    "An open-source Digital Public Good that turns multilingual citizen voice notes, texts and USSD messages into ranked, evidence-backed infrastructure priorities for BRICS cities.",
+    "An open-source Digital Public Good that turns multilingual citizen voice notes, texts and USSD messages into ranked, evidence-backed infrastructure priorities for Indian cities.",
   manifest: "/manifest.webmanifest",
 };
 

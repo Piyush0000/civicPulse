@@ -86,7 +86,7 @@ export default function MapPage() {
     <div className="relative -m-4 h-[calc(100vh-57px)] overflow-hidden md:-m-6">
       <HexMap
         center={center}
-        zoom={code === "BR-PE-REC" || code === "RU-TA-KZN" ? 11.2 : 10.4}
+        zoom={code === "IN-DL" ? 10.4 : 10.9}
         cells={shown}
         normalize={metric === "priority" ? "fixed100" : "quantile"}
         extruded={extruded}

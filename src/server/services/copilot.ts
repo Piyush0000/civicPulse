@@ -66,7 +66,7 @@ const TOOLS: Record<string, { def: ToolDef; run: ToolFn }> = {
       (await impactProjects(region)).map((p) => ({ title: p.title, category: p.category, pctChange: p.impact.pctChange, controlPctChange: p.impact.controlPctChange, didPts: p.impact.did })),
   },
   compare_brics_cities: {
-    def: fn("compare_brics_cities", "Aggregate-only comparison across the BRICS pilot cities (k-anonymous federation data).", {}),
+    def: fn("compare_brics_cities", "Aggregate-only comparison across the pilot cities (k-anonymous federation data).", {}),
     run: async () =>
       (await bricsCompare()).map((b) => ({
         city: b.region.name, country: b.region.country, population: b.population, budgetUsd: b.budgetUsd, misalignment: b.misalignment,
@@ -142,10 +142,10 @@ async function ruleCopilot(region: string, question: string, run: (n: string, a:
   const cat = CATEGORIES.find((c) => ql.includes(c.replace(/_.*/, "")) || ql.includes(catLabel(c).toLowerCase().split(" ")[0]));
   const lines: string[] = [];
   const name = getRegion(region).name;
-  const isBudget = /budget|spend|invest|fund|misalign/.test(ql) && !/brics|countries|cities/.test(ql);
-  if (!isBudget && /brics|compare (the )?(cities|countries|pilots)|countries|cities|federat/.test(ql)) {
+  const isBudget = /budget|spend|invest|fund|misalign/.test(ql) && !/cities|other cit/.test(ql);
+  if (!isBudget && /compare (the )?(cities|pilots)|cities|federat|other cit/.test(ql)) {
     const rows = (await run("compare_brics_cities", {})) as { city: string; population: number; misalignment: number; topCategories: { category: string; per100k: number }[] }[];
-    lines.push(`**BRICS pilot comparison** (aggregate-only, k-anonymous):`);
+    lines.push(`**Pilot city comparison** (aggregate-only, k-anonymous):`);
     for (const r of rows) lines.push(`- **${r.city}**: top need ${catLabel(r.topCategories[0]?.category ?? "other")} (${r.topCategories[0]?.per100k ?? 0} requests per 100k in 90 days), budget misalignment index ${r.misalignment}.`);
     const worst = [...rows].sort((a, b) => b.misalignment - a.misalignment)[0];
     if (worst) lines.push(``, `Suggestion: ${worst.city} shows the largest gap between spending and citizen demand. Start the next budget review there.`);
@@ -197,7 +197,7 @@ export const COPILOT_SUGGESTIONS = [
   "Which categories are under-funded compared to citizen demand?",
   "What is emerging right now? Any outbreaks?",
   "Did completed projects actually reduce complaints?",
-  "Compare the BRICS pilot cities",
+  "Compare the pilot cities",
   "What are citizens saying about streetlights?",
 ];
 

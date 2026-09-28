@@ -7,7 +7,7 @@ import { REGIONS } from "@/lib/regions";
 import { cx } from "@/components/ui";
 
 // A feature-phone simulator that talks to the real USSD gateway callback (Africa's Talking format).
-// Billions of BRICS citizens still use feature phones; USSD needs no data plan and no smartphone.
+// Hundreds of millions of Indians still use feature phones; USSD needs no data plan and no smartphone.
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
 

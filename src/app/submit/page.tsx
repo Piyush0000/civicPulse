@@ -62,9 +62,8 @@ export default function SubmitPage() {
     const nav = navigator.language.slice(0, 2) as UiLang;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (T[nav]) setLang(nav);
-    if (nav === "pt") setRegion("BR-PE-REC");
-    if (nav === "ru") setRegion("RU-TA-KZN");
-    if (nav === "zh") setRegion("CN-SC-CTU");
+    const byLang: Record<string, string> = { mr: "IN-MH", ta: "IN-TN", bn: "IN-WB", te: "IN-TS" };
+    if (byLang[nav]) setRegion(byLang[nav]);
   }, []);
 
   // Offline queue: flush whenever we come back online (PWA-style resilience for low connectivity).
@@ -279,7 +278,7 @@ export default function SubmitPage() {
           </div>
 
           <div>
-            <div className="label">Photo (Required)</div>
+            <div className="label">Photo (optional, helps officials verify)</div>
             <div className="flex gap-3">
               <label className="btn-ghost flex-1 cursor-pointer text-xs flex items-center justify-center gap-2">
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => {
@@ -304,7 +303,7 @@ export default function SubmitPage() {
             {t.consent}
           </label>
           {err && <p className="text-sm text-bad">{err}</p>}
-          <button className="btn-primary py-3 text-base" onClick={submit} disabled={busy || !consent || (!text.trim() && !rec && !transcript) || !photo}>
+          <button className="btn-primary py-3 text-base" onClick={submit} disabled={busy || !consent || (!text.trim() && !rec && !transcript)}>
             {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : null} {busy ? t.sending : t.submit}
           </button>
           <p className="text-center text-xs text-faint">{t.privacy}</p>

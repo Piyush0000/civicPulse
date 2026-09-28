@@ -83,7 +83,8 @@ export function generateRequests(region: RegionDef, world: World, now: Date): Sy
   const localName = (name: string, lang: TLang) => {
     const l = region.localities.find((x) => x.name === name);
     if (!l) return name;
-    if ((lang === "hi" || lang === "ru" || lang === "zh") && l.local) return l.local;
+    // Local-script names for Indian languages; Latin-script (English, Hinglish) keeps the romanised name.
+    if (lang !== "en" && lang !== "hl" && l.local) return l.local;
     return name;
   };
 
@@ -110,9 +111,9 @@ export function generateRequests(region: RegionDef, world: World, now: Date): Sy
     }
     const langKey = r.weighted(langKeys, langWeights);
     const problem = r.pick(problemsFor(opts.cat, opts.problems));
-    const useZu = langKey === "zu" && !!problem.p.zu;
-    const lang: TLang = langKey === "zu" && !useZu ? "en" : langKey;
-    const pick = (p: P, l: TLang) => (l === "zu" ? p.zu ?? p.en : p[l]);
+    // Fall back to English when a phrase has no translation in the sampled language.
+    const lang: TLang = problem.p[langKey as keyof P] ? langKey : "en";
+    const pick = (p: P, l: TLang) => p[l as keyof P] ?? p.en;
 
     // location precision
     const roll = r.next();
@@ -280,7 +281,7 @@ export function generateRequests(region: RegionDef, world: World, now: Date): Sy
   // 4) spam and non-actionable messages
   for (let i = 0; i < nSpam + nNonAction; i++) {
     const langKey = r.weighted(langKeys, langWeights);
-    const lang: TLang = langKey === "zu" ? "en" : langKey;
+    const lang: TLang = langKey;
     const isSpam = i < nSpam;
     const text = isSpam ? r.pick(SPAM[lang] || SPAM.en!) : NON_ACTIONABLE[lang as keyof P] ?? NON_ACTIONABLE.en;
     out.push({

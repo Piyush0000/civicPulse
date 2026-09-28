@@ -212,10 +212,10 @@ describe("extraction", () => {
   });
   it.each([
     ["संगम विहार में हैंडपंप खराब है, बच्चे बीमार पड़ रहे हैं", "", "water_supply", "critical"],
-    ["A rua alaga toda vez que chove e o esgoto está entupido", "", "sanitation_drainage", undefined],
-    ["В районе Азино дорога вся в глубоких ямах", "", "roads_transport", undefined],
-    ["路灯不亮，晚上这里对女性很不安全", "", "public_safety_lighting", undefined],
-    ["Ugesi uyacishwa amahora amaningi nsuku zonke e-Soweto", "", "electricity", undefined],
+    ["कुर्ला मध्ये गटार तुंबले आहे आणि रस्त्यावर पाणी साचले", "", "sanitation_drainage", undefined],
+    ["வேளச்சேரியில் சாலை முழுவதும் குழி", "", "roads_transport", undefined],
+    ["ఫలక్‌నుమాలో కుళాయిల్లో నీరు రావడం లేదు", "", "water_supply", undefined],
+    ["তিলজলায় আবর্জনা পরিষ্কার হচ্ছে না", "", "waste_management", undefined],
     ["gali mein kooda nahi uthaya gaya hai", "", "waste_management", undefined],
   ])("rules classify %s", (orig, en, cat, urg) => {
     const e = ruleExtract(orig, en);
@@ -223,20 +223,21 @@ describe("extraction", () => {
     if (urg) expect(e.urgency).toBe(urg);
   });
   it("rules flag spam", () => {
-    expect(ruleExtract("加微信领红包", "").is_spam).toBe(true);
+    expect(ruleExtract("Earn money from home daily, click this link now", "").is_spam).toBe(true);
   });
   it("detects languages including Hinglish", () => {
     expect(detectLanguage("पानी नहीं आ रहा").lang).toBe("hi");
     expect(detectLanguage("paani nahi aa raha hai ghar mein").lang).toBe("hi");
-    expect(detectLanguage("A rua está cheia de buracos").lang).toBe("pt");
-    expect(detectLanguage("нет воды").lang).toBe("ru");
-    expect(detectLanguage("停水了").lang).toBe("zh");
+    expect(detectLanguage("नळाला पाणी येत नाहीये").lang).toBe("mr");
+    expect(detectLanguage("குழாய்களில் தண்ணீர் வரவில்லை").lang).toBe("ta");
+    expect(detectLanguage("కుళాయిల్లో నీరు రావడం లేదు").lang).toBe("te");
+    expect(detectLanguage("কলে জল আসছে না").lang).toBe("bn");
     expect(detectLanguage("The road has potholes").lang).toBe("en");
   });
   it("gazetteer resolves local-script and misspelt names", () => {
     expect(gazetteer(getRegion("IN-DL"), "संगम विहार में पानी नहीं")?.loc.name).toBe("Sangam Vihar");
     expect(gazetteer(getRegion("IN-DL"), "problem in Sangam Vihaar")?.loc.name).toBe("Sangam Vihar");
-    expect(gazetteer(getRegion("RU-TA-KZN"), "в районе Азино ямы")?.loc.name).toBe("Azino");
+    expect(gazetteer(getRegion("IN-TN"), "வேளச்சேரி பகுதியில் வெள்ளம்")?.loc.name).toBe("Velachery");
   });
 });
 

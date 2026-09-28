@@ -51,7 +51,7 @@ export default function CopilotPage() {
           {msgs.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-2xl bg-accent-2/10 p-4"><BrainCircuit className="h-8 w-8 text-accent-2" /></div>
-              <p className="max-w-md text-sm text-mute">Ask about hotspots, budget gaps, emerging outbreaks, impact of past projects, or how the BRICS pilot cities compare.</p>
+              <p className="max-w-md text-sm text-mute">Ask about hotspots, budget gaps, emerging outbreaks, impact of past projects, or how the pilot cities compare.</p>
               <div className="flex max-w-2xl flex-wrap justify-center gap-2">
                 {sugg.data?.map((s) => (
                   <button key={s} onClick={() => ask(s)} className="rounded-full border border-line-2 bg-panel-2 px-3 py-1.5 text-xs text-ink hover:border-accent/50 hover:text-accent">

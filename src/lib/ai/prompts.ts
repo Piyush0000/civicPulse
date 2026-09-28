@@ -18,7 +18,7 @@ const CATEGORY_DEFS: Record<string, string> = {
   other: "anything else, including spam and general complaints",
 };
 
-export const EXTRACT_SYSTEM = `You are a civic-request classifier for a government infrastructure planning tool used across BRICS countries.
+export const EXTRACT_SYSTEM = `You are a civic-request classifier for a government infrastructure planning tool used by Indian state and city governments.
 Citizens write or speak in any language. You receive the original text, an English translation, the region and the channel.
 
 Output ONLY one JSON object with exactly these keys:

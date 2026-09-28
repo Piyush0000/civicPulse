@@ -71,10 +71,25 @@ const KW: Record<Exclude<Category, "other">, [string, number][]> = {
   ],
 };
 
+// Marathi, Tamil, Telugu and Bengali keywords (substring match on native script).
+const INDIC_KW: Partial<Record<Exclude<Category, "other">, [string, number][]>> = {
+  water_supply: [["पाणी", 1.5], ["नळ", 2], ["टँकर", 2], ["தண்ணீர்", 1.5], ["குழாய்", 2], ["நீர்", 1], ["నీరు", 1.5], ["నీటి", 1.5], ["కుళాయి", 2], ["జল", 1], ["জল", 1.5], ["কল", 1], ["টিউবওয়েল", 2], ["পানীয়", 2]],
+  sanitation_drainage: [["गटार", 2.5], ["सांडपाणी", 2.5], ["तुंबले", 2], ["வடிகால்", 2.5], ["சாக்கடை", 2.5], ["வெள்ளம்", 2.5], ["డ్రైనేజీ", 2.5], ["మురుగు", 2.5], ["వరద", 2.5], ["নর্দমা", 2.5], ["নিকাশি", 2.5], ["জমা জল", 2.5], ["জলাবদ্ধ", 2.5]],
+  roads_transport: [["रस्ता", 2], ["रस्त्यावर", 2], ["खड्डे", 2.5], ["சாலை", 2], ["குழி", 2.5], ["பேருந்து", 1.5], ["రోడ్డు", 2], ["గుంతలు", 2.5], ["బస్సు", 1.5], ["রাস্তা", 2], ["গর্ত", 2.5], ["বাস", 1.5]],
+  electricity: [["वीज", 2.5], ["ट्रान्सफॉर्मर", 2.5], ["மின்சாரம்", 2.5], ["மின்", 1.5], ["కరెంటు", 2.5], ["విద్యుత్", 2.5], ["বিদ্যুৎ", 2.5], ["কারেন্ট", 2.5], ["লোডশেডিং", 3]],
+  health: [["दवाखाना", 2], ["डॉक्टर", 2], ["ताप", 2], ["மருத்துவர்", 2], ["மருத்துவமனை", 2], ["காய்ச்சல்", 2.5], ["డాక్టర్", 2], ["ఆసుపత్రి", 2], ["జ్వరం", 2.5], ["ডাক্তার", 2], ["হাসপাতাল", 2], ["জ্বর", 2.5], ["ডেঙ্গু", 2.5]],
+  education: [["शाळा", 1.5], ["शिक्षक", 2], ["பள்ளி", 1.5], ["ஆசிரியர்", 2], ["పాఠశాల", 1.5], ["టీచర్", 2], ["স্কুল", 1.5], ["শিক্ষক", 2]],
+  housing: [["घर", 1], ["इमारत", 2], ["வீடு", 1.5], ["குடியிருப்பு", 2], ["ఇల్లు", 1.5], ["ఇళ్ళు", 1.5], ["বাড়ি", 1.5], ["উচ্ছেদ", 2.5]],
+  waste_management: [["कचरा", 2.5], ["குப்பை", 2.5], ["చెత్త", 2.5], ["আবর্জনা", 2.5], ["ময়লা", 2.5]],
+  public_safety_lighting: [["पथदिवे", 2.5], ["दिवे", 1.5], ["தெரு விளக்கு", 2.5], ["விளக்கு", 1.5], ["వీధి దీపాలు", 2.5], ["దీపాలు", 1.5], ["রাস্তার আলো", 2.5], ["চুরি", 2]],
+  digital_connectivity: [["नेटवर्क", 2], ["இணையம்", 2], ["సిగ్నల్", 2], ["ইন্টারনেট", 2]],
+};
+for (const [cat, list] of Object.entries(INDIC_KW)) KW[cat as Exclude<Category, "other">].push(...list!);
+
 const SPAM_RE = /(click|link|earn money|ganhe dinheiro|clique|переходи|ссылк|加微信|红包|lottery|whatsapp group|good morning|bom dia grupo|доброе утро|早上好|शुभकामनाएं|happy (festival|diwali|new year))/i;
 
-const CRITICAL_RE = /(sick|outbreak|dengue|collapsed|dangerous|unsafe bridge|live wire|died|death|fire|contaminat|बीमार|खतरनाक|मौत|bimar|khatarnak|doente|perigos|morreu|опасн|болеют|болеть|умер|危险|生病|发高烧|ziyagula|angcolile)/i;
-const LONG_RE = /(\d+\s*(months?|महीन|mahin|mes|meses|месяц|个月|izinyanga))|(महीनों|mahinon|meses|месяц|个月)/i;
+const CRITICAL_RE = /(sick|आजारी|நோய்|அபாய|అనారోగ్య|ప్రమాద|অসুস্থ|বিপজ্জনক|outbreak|dengue|collapsed|dangerous|unsafe bridge|live wire|died|death|fire|contaminat|बीमार|खतरनाक|मौत|bimar|khatarnak|doente|perigos|morreu|опасн|болеют|болеть|умер|危险|生病|发高烧|ziyagula|angcolile)/i;
+const LONG_RE = /(\d+\s*(months?|महीन|mahin|महिन|மாத|నెల|মাস))|(महीनों|mahinon|महिन्यां|மாதங்களாக|నెలలుగా|মাস ধরে)/i;
 const LOW_RE = /(suggest|improve|beautif|noise|stray|thefts|sugest|шум|噪音|суggest)/i;
 
 export function stripLandmarks(text: string): string {

@@ -23,7 +23,7 @@ export default function About() {
         <p className="mt-3 text-mute">
           Governments struggle to hear citizens at scale and to connect what they hear with where money goes. CivicPulse is a multilingual AI platform,
           designed as a Digital Public Good, that aggregates citizen development requests from voice, text and messaging channels, fuses them with
-          demographic, infrastructure and investment data, detects demand hotspots and recommends high-priority projects to policymakers across BRICS nations.
+          demographic, infrastructure and investment data, detects demand hotspots and recommends high-priority projects to policymakers across Indian states and cities.
         </p>
 
         <h2 className="mt-10 text-xl font-semibold">Privacy notice (plain language)</h2>

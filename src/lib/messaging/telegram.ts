@@ -74,11 +74,11 @@ async function saveState(chatId: string, s: State) {
 }
 
 const CITY_ALIASES: Record<string, string> = {
-  delhi: "IN-DL", दिल्ली: "IN-DL", recife: "BR-PE-REC", joburg: "ZA-GP-JHB", johannesburg: "ZA-GP-JHB",
-  kazan: "RU-TA-KZN", казань: "RU-TA-KZN", chengdu: "CN-SC-CTU", 成都: "CN-SC-CTU",
+  delhi: "IN-DL", दिल्ली: "IN-DL", mumbai: "IN-MH", मुंबई: "IN-MH", chennai: "IN-TN", சென்னை: "IN-TN",
+  kolkata: "IN-WB", কলকাতা: "IN-WB", hyderabad: "IN-TS", హైదరాబాద్: "IN-TS",
 };
 
-const YES = /^(yes|y|ok|haan|हाँ|हां|ha|sim|да|是|好|yebo)\b/i;
+const YES = /^(yes|y|ok|haan|हाँ|हां|ha|हो|होय|ஆம்|అవును|হ্যাঁ)/i;
 
 export async function handleTelegramUpdate(u: TgUpdate): Promise<void> {
   const m = u.message;

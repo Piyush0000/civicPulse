@@ -27,9 +27,9 @@ export default function BricsPage() {
   return (
     <div className="mx-auto flex max-w-[1500px] flex-col gap-5">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight"><Globe2 className="h-6 w-6 text-accent" /> BRICS federation</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight"><Globe2 className="h-6 w-6 text-accent" /> City federation</h1>
         <p className="max-w-3xl text-sm text-mute">
-          Each country runs its own CivicPulse instance (data sovereignty). Instances share only <b className="text-ink">k-anonymous, HMAC-signed aggregates</b> (k = {d.data[0]?.kAnonymity}). Raw requests never leave the country. This lets BRICS partners compare needs, budget alignment and what works.
+          Each city or state runs its own CivicPulse instance (data sovereignty). Instances share only <b className="text-ink">k-anonymous, HMAC-signed aggregates</b> (k = {d.data[0]?.kAnonymity}). Raw requests never leave the country. This lets BRICS partners compare needs, budget alignment and what works.
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
