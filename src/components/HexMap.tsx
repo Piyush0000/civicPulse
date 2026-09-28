@@ -7,7 +7,7 @@ import { H3HexagonLayer } from "@deck.gl/geo-layers";
 import { ScatterplotLayer } from "@deck.gl/layers";
 import type { Layer, PickingInfo } from "@deck.gl/core";
 
-export type HexDatum = { h: string; v: number; hs?: boolean; em?: boolean; n?: number; tier?: "red" | "watch" | "normal" };
+export type HexDatum = { h: string; v: number; hs?: boolean; em?: boolean; n?: number };
 export type Ping = { id: string; lat: number; lng: number; color: string; born: number };
 export type MapPoint = { lat: number; lng: number; color: string; label?: string; radius?: number };
 
@@ -154,17 +154,6 @@ export default function HexMap(props: {
     return (v: number) => Math.max(0, Math.min(1, (v - lo) / (hi - lo || 1)));
   }, [props.cells, props.normalize]);
 
-  const cellsWithTier = useMemo(() => {
-    return props.cells.map(d => {
-      const t = norm(d.v);
-      const highNeed = t > 0.5;
-      let tier: "red" | "watch" | "normal" = "normal";
-      if (d.hs && highNeed) tier = "red";
-      else if ((d.hs && !highNeed) || (!d.hs && highNeed && (d.n ?? 0) < 5) || d.em) tier = "watch";
-      return { ...d, tier };
-    });
-  }, [props.cells, norm]);
-
   useEffect(() => {
     if (!overlay.current) return;
     const layers: Layer[] = [];
@@ -172,7 +161,7 @@ export default function HexMap(props: {
     layers.push(
       new H3HexagonLayer<HexDatum>({
         id: "cells",
-        data: cellsWithTier,
+        data: props.cells,
         getHexagon: (d) => d.h,
         getFillColor: (d) => {
           const t = norm(d.v);
@@ -186,11 +175,20 @@ export default function HexMap(props: {
         stroked: true,
         getLineColor: (d) => {
           if (d.h === props.selected) return [255, 255, 255, 255];
-          if (d.tier === "red") return [255, 50, 80, 240];
-          if (d.tier === "watch") return [253, 140, 30, 230];
+          const highNeed = norm(d.v) > 0.5;
+          const isRed = d.hs && highNeed;
+          const isWatch = (d.hs && !highNeed) || (!d.hs && highNeed && (d.n ?? 0) < 5) || d.em;
+          if (isRed) return [255, 50, 80, 240];
+          if (isWatch) return [253, 140, 30, 230];
           return [6, 10, 19, 90];
         },
-        getLineWidth: (d) => (d.h === props.selected ? 3 : d.tier !== "normal" ? 2 : 0.5),
+        getLineWidth: (d) => {
+          if (d.h === props.selected) return 3;
+          const highNeed = norm(d.v) > 0.5;
+          const isRed = d.hs && highNeed;
+          const isWatch = (d.hs && !highNeed) || (!d.hs && highNeed && (d.n ?? 0) < 5) || d.em;
+          return isRed || isWatch ? 2 : 0.5;
+        },
         lineWidthUnits: "pixels",
         pickable: true,
         autoHighlight: true,
@@ -266,7 +264,7 @@ export default function HexMap(props: {
       );
     }
     overlay.current.setProps({ layers });
-  }, [props.cells, cellsWithTier, props.extruded, props.selected, props.highlight, props.outlines, props.points, props.pings, norm, now, props.opacity, props]);
+  }, [props.cells, props.extruded, props.selected, props.highlight, props.outlines, props.points, props.pings, norm, now, props.opacity, props]);
 
   return <div ref={el} className={props.className ?? "h-full w-full"} />;
 }

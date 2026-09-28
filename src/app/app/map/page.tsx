@@ -131,8 +131,8 @@ export default function MapPage() {
               {metricLabel}: <span className="font-mono">{fmt(hover.v, metric === "population" ? 0 : 2)}</span>
               {hover.n ? ` · ${hover.n} requests/90d` : ""}
             </div>
-            {hover.tier === "red" && <div className="text-[#ff3250] font-medium mt-1">🔴 Redzone: Critical need & cluster</div>}
-            {hover.tier === "watch" && <div className="text-[#fd8c1e] font-medium mt-1">🟠 Watch: Needs attention</div>}
+            {hover.hs && <div className="text-bad">Significant hotspot (Gi* p&lt;0.05)</div>}
+            {hover.em && <div className="text-warn">Emerging: sharp 30-day rise</div>}
           </div>
         )}
         <div className="card w-64 bg-panel/90 p-3 text-[11px] text-mute backdrop-blur">
@@ -140,8 +140,8 @@ export default function MapPage() {
           <div className="h-2 rounded-full" style={{ background: RAMP_CSS }} />
           <div className="mt-1 flex justify-between"><span>low</span><span>high</span></div>
           <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border-2 border-[#ff3250]" />Redzone</span>
-            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border-2 border-[#fd8c1e]" />Watch</span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border-2 border-[#ff5a78]" />hotspot</span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border-2 border-[#fde047]" />emerging</span>
             {showProj && <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border-2 border-accent-2" />funded project</span>}
           </div>
         </div>
