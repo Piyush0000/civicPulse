@@ -19,3 +19,10 @@
 | 2026-09-27 | Federation aggregates signed with HMAC (demo key). | Shows the protocol; production would use per-country Ed25519 keys. |
 | 2026-09-27 | USSD handler speaks the Africa's Talking callback format. | The most common gateway format in the pilot geographies; any gateway can adapt. |
 | 2026-09-27 | Twilio/WhatsApp dropped. | Paid; Telegram, USSD and IVR cover the channels for free. |
+| 2026-09-28 | Pivot from BRICS to India (team PR): 5 Indian cities, Marathi/Tamil/Telugu/Bengali. Re-added deprived neighbourhoods and rewrote city stories with Indian seasonality. | The PR removed localities the scenarios depended on and broke the seed and 12 type checks. |
+| 2026-09-28 | Removed hard-coded Cloudinary credentials; photos are optional, stored in their own column (never injected into complaint text), Cloudinary only via env, local fallback. | Secrets in a public repo; photo URLs were being sent to translation/LLMs; a mandatory photo excluded voice-only and feature-phone users. |
+| 2026-09-28 | Separate citizen and government portals on one session format; government accounts are never self-registered. | Item 6: citizens need their own history; officials need provisioned, auditable identities. |
+| 2026-09-28 | CM's office (role `cm`) approves; MPs/MLAs endorse; departments execute. | Item 9: mirrors how approvals actually flow in Indian states. |
+| 2026-09-28 | Work is "verified" only when ≥3 residents respond and ≥60% say fixed; ≤40% marks it "disputed" and reopens complaints. | Item 9: outcome, not output. Departments cannot close the loop alone. |
+| 2026-09-28 | What-if numbers are computed deterministically; Gemini (preferred for this feature) only narrates, and every number is checked. | Item 10: MPs must be able to trust the figures; LLM free tiers are intermittently unavailable (503). |
+| 2026-09-28 | Retry once on 429/503 before falling back to the next provider. | Gemini free tier returns 503 "high demand" under load. |

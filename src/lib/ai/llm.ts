@@ -39,9 +39,12 @@ export async function chat(opts: {
   maxTokens?: number;
   tools?: ToolDef[];
   timeoutMs?: number;
+  prefer?: "groq" | "gemini";
 }): Promise<ChatResult> {
   const errors: string[] = [];
-  for (const p of providers()) {
+  const list = providers().sort((a, b) => Number(b.name === opts.prefer) - Number(a.name === opts.prefer));
+  for (const p of list) {
+   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const body: Record<string, unknown> = {
         model: p.model,
@@ -60,7 +63,15 @@ export async function chat(opts: {
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(opts.timeoutMs ?? 30000),
       });
-      if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 200)}`);
+      if (!res.ok) {
+        const msg = `${res.status} ${(await res.text()).slice(0, 200)}`;
+        // Free tiers return 429/503 under load ("model is experiencing high demand"): retry once, then fall through.
+        if ((res.status === 429 || res.status === 503) && attempt === 0) {
+          await new Promise((r) => setTimeout(r, 1500));
+          continue;
+        }
+        throw new Error(msg);
+      }
       const data = (await res.json()) as {
         choices: { message: { content: string | null; tool_calls?: ToolCall[] } }[];
       };
@@ -69,7 +80,9 @@ export async function chat(opts: {
       return { text: msg.content ?? "", toolCalls: msg.tool_calls ?? [], provider: p.name, model: p.model };
     } catch (e) {
       errors.push(`${p.name}: ${(e as Error).message}`);
+      break;
     }
+   }
   }
   throw new Error(errors.length ? `all LLM providers failed: ${errors.join(" | ")}` : "no LLM provider configured");
 }

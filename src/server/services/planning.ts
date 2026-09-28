@@ -66,7 +66,9 @@ export async function recommendationDetail(region: string, id: string) {
     "SELECT seq, user_email, action, diff, at, hash FROM audit_log WHERE entity_type='recommendation' AND entity_id=$1 ORDER BY seq DESC",
     [id],
   );
-  return { ...rec, cellsDetail: cells, brief, monthly, languages, history };
+  const { feedbackSummary } = await import("./governance");
+  const feedback = await feedbackSummary(id);
+  return { ...rec, cellsDetail: cells, brief, monthly, languages, history, feedback };
 }
 
 export async function decideRecommendation(region: string, id: string, body: { status?: string; note?: string }, s: Session) {
@@ -77,6 +79,7 @@ export async function decideRecommendation(region: string, id: string, body: { s
     [id, region],
   );
   if (!rec) throw new ApiError(404, "not_found", "Recommendation not found");
+  if (rec.status === "accepted" && status !== "accepted" && s.role !== "admin") throw new ApiError(409, "already_approved", "Approved projects can only be changed by an admin");
   const note = String(body.note || "").slice(0, 1000);
   const db = await getDb();
   const ledger = await db.tx(async (t) => {
@@ -96,7 +99,11 @@ export async function decideRecommendation(region: string, id: string, body: { s
     );
   });
   await publish({ type: "decision", region, id, status, title: rec.title, at: new Date().toISOString() });
-  if (status === "accepted") void notifyReporters(region, rec.category, rec.h3_cells, rec.title);
+  if (status === "accepted") {
+    const { onApproved } = await import("./governance");
+    await onApproved(region, id);
+    void notifyReporters(region, rec.category, rec.h3_cells, rec.title);
+  }
   return { ok: true, ledger };
 }
 
@@ -369,7 +376,7 @@ export async function previewWeights(region: string, w: Weights) {
   return cands.slice(0, 10).map((c, i) => ({ rank: i + 1, title: c.title, category: c.category, score: c.score, people: c.people }));
 }
 
-// ---------------------------------------------------------------- BRICS federation (aggregate-only)
+// ---------------------------------------------------------------- city federation (aggregate-only)
 
 /** k-anonymous aggregate that a national instance could publish to peers. HMAC-signed. */
 export async function federationAggregate(region: string) {

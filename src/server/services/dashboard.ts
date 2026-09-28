@@ -213,6 +213,16 @@ export async function patchRequest(region: string, id: string, body: Record<stri
 // ---------------------------------------------------------------- map
 
 export async function mapCells(region: string, category: string, metric: string) {
+  if (metric === "zone") {
+    // High-priority zones for government: every cell takes its ward's need score; priority wards are outlined.
+    const { zoneRatings } = await import("./governance");
+    const zones = new Map((await zoneRatings(region)).map((z) => [z.zone, z]));
+    const rows = await q<{ h: string; admin: string | null }>("SELECT h3_cell h, admin_name admin FROM h3_cells WHERE region_code=$1", [region]);
+    return rows.map((r) => {
+      const z = r.admin ? zones.get(r.admin) : undefined;
+      return { h: r.h, v: z?.needScore ?? 0, hs: !!z?.priorityZone, em: false, n: z?.complaints90d ?? 0, z: r.admin };
+    });
+  }
   if (metric === "population" || metric === "vulnerability" || metric === "connectivity") {
     const col = metric === "population" ? "population" : metric === "vulnerability" ? "vulnerability_index" : "connectivity_index";
     const rows = await q<{ h: string; v: number }>(`SELECT h3_cell h, ${col}::float8 v FROM h3_cells WHERE region_code=$1`, [region]);

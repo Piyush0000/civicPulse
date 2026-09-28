@@ -37,6 +37,11 @@ export const config = {
   rawAudioRetentionDays: Number(env("RAW_AUDIO_RETENTION_DAYS") || 30),
   requestTextRetentionDays: Number(env("REQUEST_TEXT_RETENTION_DAYS") || 730),
   autoSeed: env("AUTO_SEED") !== "false",
+  cloudinaryCloud: env("CLOUDINARY_CLOUD_NAME"),
+  cloudinaryKey: env("CLOUDINARY_API_KEY"),
+  cloudinarySecret: env("CLOUDINARY_API_SECRET"),
+  dataGovInKey: env("DATA_GOV_IN_API_KEY"),
+  allocationApiUrl: env("ALLOCATION_API_URL"),
   embedDim: 256,
 };
 

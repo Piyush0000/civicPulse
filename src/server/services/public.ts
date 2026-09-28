@@ -20,26 +20,24 @@ const TIMELINE = ["received", "understood", "under_review", "linked_to_project",
 
 export async function trackRequest(code: string) {
   const r = await q1<{
-    tracking_code: string; region_code: string; category: string | null; urgency: string | null; summary: string | null; status: string;
-    pipeline_status: string; processed_at: Date | null; submitted_at: Date; admin_name: string | null; language_detected: string | null; pipeline_error: string | null;
-    cluster_id: string | null; text_original: string | null;
+    id: string; tracking_code: string; region_code: string; category: string | null; urgency: string | null; summary: string | null; status: string;
+    pipeline_status: string; processed_at: Date | null; submitted_at: Date; admin_name: string | null; language_detected: string | null;
+    cluster_id: string | null; photo_url: string | null; recommendation_id: string | null; rec_title: string | null; work_stage: string | null;
+    work_done_at: Date | null; scheme: string | null; solved: string | null; rating: number | null;
   }>(
-    `SELECT r.tracking_code, r.region_code, r.category, r.urgency, r.summary, r.status, r.pipeline_status, r.submitted_at, r.processed_at, r.admin_name,
-            r.language_detected, r.pipeline_error, r.cluster_id, m.text_original 
-     FROM requests r LEFT JOIN raw_messages m ON r.raw_message_id = m.id WHERE r.tracking_code=$1`,
+    `SELECT r.id, r.tracking_code, r.region_code, r.category, r.urgency, r.summary, r.status, r.pipeline_status, r.submitted_at, r.processed_at,
+            r.admin_name, r.language_detected, r.cluster_id, r.photo_url, r.recommendation_id, rec.title rec_title, rec.work_stage,
+            rec.work_done_at, rec.scheme, f.solved, f.rating
+       FROM requests r
+       LEFT JOIN recommendations rec ON rec.id = r.recommendation_id
+       LEFT JOIN citizen_feedback f ON f.request_id = r.id
+      WHERE r.tracking_code=$1`,
     [code.toUpperCase()],
   );
   if (!r) throw new ApiError(404, "not_found", "No request with this tracking ID");
   const others = r.cluster_id ? await q1<{ n: number }>("SELECT count(DISTINCT reporter_id)::int n FROM requests WHERE cluster_id=$1", [r.cluster_id]) : null;
   const understood = r.pipeline_status === "completed";
   const stage = r.status === "resolved" ? 4 : r.status === "linked_to_project" ? 3 : r.status === "under_review" ? 2 : understood ? 1 : 0;
-  
-  let photoUrl: string | null = null;
-  if (r.text_original) {
-    const match = r.text_original.match(/\[Attached Photo\]\((.*?)\)/);
-    if (match) photoUrl = match[1];
-  }
-
   return {
     trackingCode: r.tracking_code,
     region: getRegion(r.region_code).name,
@@ -47,7 +45,7 @@ export async function trackRequest(code: string) {
     categoryLabel: r.category ? catLabel(r.category) : null,
     urgency: r.urgency,
     summary: understood ? r.summary : null,
-    photoUrl,
+    photoUrl: r.photo_url,
     area: r.admin_name,
     status: r.status,
     pipelineStatus: r.pipeline_status,
@@ -56,6 +54,8 @@ export async function trackRequest(code: string) {
     processedAt: r.processed_at,
     timeline: TIMELINE.map((s, i) => ({ step: s, done: i <= stage })),
     neighboursReportingSame: others ? Math.max(0, others.n - 1) : 0,
+    project: r.recommendation_id ? { title: r.rec_title, workStage: r.work_stage, workDoneAt: r.work_done_at, scheme: r.scheme } : null,
+    feedback: { open: r.status === "resolved" && !!r.recommendation_id, given: r.solved ? { solved: r.solved, rating: r.rating } : null },
   };
 }
 

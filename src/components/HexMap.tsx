@@ -7,7 +7,7 @@ import { H3HexagonLayer } from "@deck.gl/geo-layers";
 import { ScatterplotLayer } from "@deck.gl/layers";
 import type { Layer, PickingInfo } from "@deck.gl/core";
 
-export type HexDatum = { h: string; v: number; hs?: boolean; em?: boolean; n?: number };
+export type HexDatum = { h: string; v: number; hs?: boolean; em?: boolean; n?: number; z?: string | null };
 export type Ping = { id: string; lat: number; lng: number; color: string; born: number };
 export type MapPoint = { lat: number; lng: number; color: string; label?: string; radius?: number };
 

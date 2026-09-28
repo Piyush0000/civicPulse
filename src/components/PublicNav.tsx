@@ -15,7 +15,8 @@ export default function PublicNav() {
           <Link href="/ussd" className="hidden rounded-lg px-3 py-1.5 text-mute hover:text-ink md:block">Feature phone</Link>
           <Link href="/transparency" className="hidden rounded-lg px-3 py-1.5 text-mute hover:text-ink md:block">Transparency</Link>
           <Link href="/about" className="hidden rounded-lg px-3 py-1.5 text-mute hover:text-ink md:block">About</Link>
-          <Link href="/app" className="btn-ghost px-3 py-1.5 text-xs">Planner console</Link>
+          <Link href="/citizen" className="hidden rounded-lg px-3 py-1.5 text-mute hover:text-ink sm:block">My complaints</Link>
+          <Link href="/app" className="btn-ghost px-3 py-1.5 text-xs">Government login</Link>
         </nav>
       </div>
     </header>

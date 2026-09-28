@@ -28,6 +28,7 @@ export type IntakeInput = {
   lng?: number | null;
   language?: string | null;
   replyTo?: { channel: "telegram"; chatId: string } | null;
+  photoUrl?: string | null;
 };
 
 export type IntakeResult = { requestId: string; trackingCode: string; duplicate: boolean };
@@ -74,9 +75,9 @@ export async function intake(input: IntakeInput): Promise<IntakeResult> {
   }
 
   const [raw] = await db.query<{ id: string }>(
-    `INSERT INTO raw_messages (region_code, reporter_id, channel, external_message_id, content_type, text_original, transcript_hint, audio_path, audio_mime, lat, lng)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-    [region.code, reporterId, input.channel, extId, audioPath ? "audio" : "text", input.text ?? null, input.transcriptHint ?? null, audioPath, input.audio?.mime ?? null, input.lat ?? null, input.lng ?? null],
+    `INSERT INTO raw_messages (region_code, reporter_id, channel, external_message_id, content_type, text_original, transcript_hint, audio_path, audio_mime, lat, lng, photo_url)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+    [region.code, reporterId, input.channel, extId, audioPath ? "audio" : "text", input.text ?? null, input.transcriptHint ?? null, audioPath, input.audio?.mime ?? null, input.lat ?? null, input.lng ?? null, input.photoUrl ?? null],
   );
 
   let code = trackingCode();
@@ -86,9 +87,9 @@ export async function intake(input: IntakeInput): Promise<IntakeResult> {
     code = trackingCode();
   }
   const [req] = await db.query<{ id: string }>(
-    `INSERT INTO requests (region_code, raw_message_id, reporter_id, tracking_code, channel, pipeline_status, language_detected, input_mode)
-     VALUES ($1,$2,$3,$4,$5,'received',$6,$7) RETURNING id`,
-    [region.code, raw.id, reporterId, code, input.channel, input.language ?? null, audioPath || input.transcriptHint ? "voice" : "text"],
+    `INSERT INTO requests (region_code, raw_message_id, reporter_id, tracking_code, channel, pipeline_status, language_detected, input_mode, photo_url)
+     VALUES ($1,$2,$3,$4,$5,'received',$6,$7,$8) RETURNING id`,
+    [region.code, raw.id, reporterId, code, input.channel, input.language ?? null, audioPath || input.transcriptHint ? "voice" : "text", input.photoUrl ?? null],
   );
   await publish({ type: "pipeline", region: region.code, id: req.id, tracking: code, step: "received", at: new Date().toISOString() });
   return { requestId: req.id, trackingCode: code, duplicate: false };

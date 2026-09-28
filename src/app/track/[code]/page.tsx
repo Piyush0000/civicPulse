@@ -6,11 +6,16 @@ import PublicNav from "@/components/PublicNav";
 import { T, UI_LANGS, type UiLang } from "@/lib/client/i18n";
 import { useApi, useInterval } from "@/lib/client/hooks";
 import { CatBadge, ErrorBox, UrgencyBadge, cx } from "@/components/ui";
+import FeedbackForm from "@/components/FeedbackForm";
+
+const WORK: Record<string, string> = { approved: "Approved by the CM’s office", work_started: "Work in progress", work_done: "Work reported done", verified: "Verified fixed by residents", disputed: "Residents report it is NOT fixed: sent back to the department" };
 
 type Track = {
   trackingCode: string; region: string; category: string | null; categoryLabel: string | null; urgency: string | null; summary: string | null; area: string | null;
   status: string; pipelineStatus: string; failed: boolean; submittedAt: string; timeline: { step: keyof (typeof T)["en"]["steps"]; done: boolean }[]; neighboursReportingSame: number;
   photoUrl: string | null;
+  project: { title: string; workStage: string; workDoneAt: string | null; scheme: string | null } | null;
+  feedback: { open: boolean; given: { solved: string; rating: number } | null };
 };
 
 export default function TrackPage({ params }: { params: Promise<{ code: string }> }) {
@@ -63,6 +68,16 @@ export default function TrackPage({ params }: { params: Promise<{ code: string }
                 <p className="mt-3 flex items-center gap-2 text-sm text-accent"><Users className="h-4 w-4" /> {t.neighbours(d.data.neighboursReportingSame)}</p>
               )}
             </div>
+            {d.data.project && (
+              <div className="card mt-4 p-4 text-sm">
+                <div className="text-xs text-faint">Linked government project</div>
+                <div className="font-medium text-ink">{d.data.project.title}</div>
+                <div className="mt-1 text-accent">{WORK[d.data.project.workStage] ?? "Approved"}</div>
+                {d.data.project.scheme && <div className="mt-1 text-xs text-mute">Funded under {d.data.project.scheme}</div>}
+              </div>
+            )}
+            {d.data.feedback.open && !d.data.feedback.given && <div className="mt-4"><FeedbackForm code={d.data.trackingCode} onDone={() => setTimeout(() => d.reload(), 2500)} /></div>}
+            {d.data.feedback.given && <p className="mt-4 text-sm text-ok">You verified this work: {d.data.feedback.given.solved} · {"★".repeat(d.data.feedback.given.rating)}</p>}
             <ol className="mt-6 flex flex-col">
               {d.data.timeline.map((s, i) => (
                 <li key={s.step} className="relative flex gap-4 pb-6 last:pb-0">

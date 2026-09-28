@@ -5,9 +5,10 @@ import Link from "next/link";
 import { use, useMemo, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { AlertTriangle, ArrowLeft, Check, Clock, FileDown, Hash, RefreshCw, Sparkles, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, FileDown, RefreshCw, Sparkles } from "lucide-react";
 import { api, fmt, fmtCompact, fmtUsd, useApi, useRegion } from "@/lib/client/hooks";
 import { TrendArea } from "@/components/charts";
+import GovernancePanel, { type GovRec } from "@/components/GovernancePanel";
 import { CatBadge, ErrorBox, LANG_LABEL, ScoreRing, Section, Spinner, StatusBadge, UrgencyBadge, cx } from "@/components/ui";
 import type { HexDatum } from "@/components/HexMap";
 
@@ -33,7 +34,6 @@ export default function RecommendationDetail({ params }: { params: Promise<{ id:
   const { code } = useRegion();
   const d = useApi<Detail>(`/recommendations/${id}?region=${code}`, [id, code]);
   const me = useApi<{ user: { role: string } }>("/auth/me");
-  const [note, setNote] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -43,22 +43,6 @@ export default function RecommendationDetail({ params }: { params: Promise<{ id:
   if (d.error) return <ErrorBox msg={d.error} />;
   if (!d.data) return <Spinner />;
   const r = d.data;
-  const canDecide = me.data && ["admin", "policymaker"].includes(me.data.user.role);
-
-  const decide = async (status: string) => {
-    setBusy(status);
-    setMsg(null);
-    try {
-      const res = await api<{ ledger: { seq: number; hash: string } }>(`/recommendations/${id}?region=${code}`, { method: "PATCH", json: { status, note } });
-      setMsg(`Decision recorded in ledger entry #${res.ledger.seq} (${res.ledger.hash.slice(0, 12)}…)`);
-      setNote("");
-      await d.reload();
-    } catch (e) {
-      setMsg((e as Error).message);
-    } finally {
-      setBusy(null);
-    }
-  };
   const regen = async () => {
     setBusy("brief");
     try {
@@ -180,18 +164,8 @@ export default function RecommendationDetail({ params }: { params: Promise<{ id:
             <HexMap center={center} zoom={11.6} cells={cells} normalize="fixed100" interactive />
           </div>
 
-          {canDecide && (
-            <Section title="Decision" className="no-print">
-              <textarea className="input mb-3 h-20 resize-none" placeholder="Decision note (visible in the public ledger)…" value={note} onChange={(e) => setNote(e.target.value)} />
-              <div className="grid grid-cols-3 gap-2">
-                <button className="btn-ok" onClick={() => decide("accepted")} disabled={!!busy}><Check className="h-4 w-4" /> Accept</button>
-                <button className="btn-ghost" onClick={() => decide("deferred")} disabled={!!busy}><Clock className="h-4 w-4" /> Defer</button>
-                <button className="btn-danger" onClick={() => decide("rejected")} disabled={!!busy}><X className="h-4 w-4" /> Reject</button>
-              </div>
-              {msg && <p className="mt-3 flex items-start gap-1.5 text-xs text-accent"><Hash className="mt-0.5 h-3.5 w-3.5 shrink-0" />{msg}</p>}
-              <p className="mt-3 text-[11px] text-faint">Accepting links the area&apos;s open requests to this project and notifies citizens who left a reply channel.</p>
-            </Section>
-          )}
+          <GovernancePanel rec={r as unknown as GovRec} role={me.data?.user.role} region={code} onChange={() => d.reload()} />
+          {msg && <p className="text-xs text-accent">{msg}</p>}
 
           <Section title="Infrastructure gap">
             {Object.entries(r.gap_summary).map(([k, g]) => (

@@ -302,6 +302,65 @@ CREATE TABLE IF NOT EXISTS geocode_cache (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- v2: citizen + government portals, photos, execution lifecycle, citizen verification, fund allocations
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','analyst','policymaker','cm','citizen'));
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS department text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS designation text;
+ALTER TABLE raw_messages ADD COLUMN IF NOT EXISTS photo_url text;
+ALTER TABLE requests ADD COLUMN IF NOT EXISTS photo_url text;
+ALTER TABLE requests ADD COLUMN IF NOT EXISTS recommendation_id uuid;
+ALTER TABLE requests ADD COLUMN IF NOT EXISTS resolved_at timestamptz;
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS work_stage text NOT NULL DEFAULT 'none';
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS endorsed_by text;
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS endorsed_at timestamptz;
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS work_started_at timestamptz;
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS work_done_at timestamptz;
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS work_note text;
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS contractor text;
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS scheme text;
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS sanctioned_inr double precision;
+ALTER TABLE planned_projects ADD COLUMN IF NOT EXISTS scheme text;
+
+CREATE TABLE IF NOT EXISTS citizen_feedback (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  recommendation_id uuid NOT NULL REFERENCES recommendations(id) ON DELETE CASCADE,
+  request_id uuid UNIQUE,
+  region_code text NOT NULL,
+  solved text NOT NULL CHECK (solved IN ('yes','partly','no')),
+  rating int NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment text,
+  is_synthetic boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS feedback_rec ON citizen_feedback (recommendation_id);
+
+CREATE TABLE IF NOT EXISTS fund_allocations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  region_code text NOT NULL,
+  scheme text NOT NULL,
+  category text,
+  project_ref text NOT NULL,
+  project_title text,
+  fy text NOT NULL,
+  sanctioned double precision NOT NULL DEFAULT 0,
+  released double precision NOT NULL DEFAULT 0,
+  utilised double precision NOT NULL DEFAULT 0,
+  source text NOT NULL,
+  as_of date NOT NULL,
+  UNIQUE (region_code, scheme, project_ref, fy)
+);
+
+CREATE TABLE IF NOT EXISTS scheme_envelopes (
+  region_code text NOT NULL,
+  scheme text NOT NULL,
+  fy text NOT NULL,
+  envelope double precision NOT NULL,
+  source text NOT NULL,
+  PRIMARY KEY (region_code, scheme, fy)
+);
+
 CREATE TABLE IF NOT EXISTS job_runs (
   id bigserial PRIMARY KEY,
   name text NOT NULL,

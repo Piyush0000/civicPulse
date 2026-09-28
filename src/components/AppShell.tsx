@@ -4,14 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import {
-  Activity, BrainCircuit, Calculator, Database, Globe2, Inbox, LayoutDashboard, LogOut, Map as MapIcon, Menu, Radar, Scale,
+  Activity, Banknote, BrainCircuit, Building2, Trophy, Calculator, Database, Globe2, Inbox, LayoutDashboard, LogOut, Map as MapIcon, Menu, Radar, Scale,
   ShieldCheck, SlidersHorizontal, Target, TrendingDown, X,
 } from "lucide-react";
 import { REGIONS } from "@/lib/regions";
 import { api, RegionProvider, useApi, useInterval, usePulse, useRegion } from "@/lib/client/hooks";
 import { cx } from "./ui";
 
-type Me = { user: { name: string; email: string; role: string } };
+type Me = { user: { name: string; email: string; role: string; roleLabel?: string } };
 type Status = {
   providers: { llm: string[]; stt: string[]; database: string; realtime: string; telegram: string };
   seed: { status?: string; progress?: number; message?: string } | null;
@@ -22,12 +22,15 @@ const NAV = [
   { href: "/app/map", label: "Live Pulse Map", icon: MapIcon },
   { href: "/app/requests", label: "Citizen Requests", icon: Inbox },
   { href: "/app/recommendations", label: "Recommendations", icon: Target },
+  { href: "/app/zones", label: "Zone Ratings", icon: Trophy },
+  { href: "/app/whatif", label: "What-if Simulator", icon: Building2, badge: "AI" },
   { href: "/app/copilot", label: "Ask CivicPulse", icon: BrainCircuit, badge: "AI" },
   { href: "/app/budget", label: "Budget Alignment", icon: Scale },
+  { href: "/app/funds", label: "Fund Allocations", icon: Banknote },
   { href: "/app/optimizer", label: "Budget Optimizer", icon: Calculator },
   { href: "/app/foresight", label: "Foresight", icon: Radar },
   { href: "/app/impact", label: "Impact", icon: TrendingDown },
-  { href: "/app/brics", label: "BRICS Federation", icon: Globe2 },
+  { href: "/app/brics", label: "City Federation", icon: Globe2 },
   { href: "/app/datasets", label: "Data & Channels", icon: Database },
   { href: "/app/settings", label: "Scoring Weights", icon: SlidersHorizontal },
   { href: "/app/ledger", label: "Decision Ledger", icon: ShieldCheck },
@@ -143,7 +146,7 @@ function Shell({ children }: { children: ReactNode }) {
               <div className="flex items-center gap-2">
                 <div className="hidden text-right sm:block">
                   <div className="text-xs font-medium text-ink">{me.data.user.name}</div>
-                  <div className="text-[10px] uppercase tracking-wider text-accent">{me.data.user.role}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-accent">{me.data.user.roleLabel ?? me.data.user.role}</div>
                 </div>
                 <button onClick={logout} className="rounded-lg p-2 text-mute hover:bg-panel-2 hover:text-ink" aria-label="Log out">
                   <LogOut className="h-4 w-4" />
@@ -155,7 +158,7 @@ function Shell({ children }: { children: ReactNode }) {
         {seeding && (
           <div className="border-b border-accent/30 bg-accent/10 px-4 py-2 text-xs text-accent">
             <Activity className="mr-2 inline h-3.5 w-3.5 animate-pulse" />
-            Building the synthetic BRICS demo world: {status.data?.seed?.message} ({status.data?.seed?.progress ?? 0}%)
+            Building the synthetic demo world: {status.data?.seed?.message} ({status.data?.seed?.progress ?? 0}%)
           </div>
         )}
         <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
@@ -170,7 +173,7 @@ function Brand() {
       <PulseLogo />
       <div>
         <div className="text-[15px] font-semibold tracking-tight text-ink">CivicPulse</div>
-        <div className="text-[10px] uppercase tracking-[0.18em] text-faint">BRICS · DPG</div>
+        <div className="text-[10px] uppercase tracking-[0.18em] text-faint">Gov console · DPG</div>
       </div>
     </Link>
   );

@@ -13,14 +13,18 @@ import { REGIONS, type RegionDef } from "../regions";
 import { hashString, rng } from "../stats";
 import { generateRequests } from "./synthetic";
 import { buildWorld } from "./world";
+import { seedCitizenHistory, seedFunds, seedLifecycle } from "./lifecycle";
 
-export const SEED_VERSION = 4;
+export const SEED_VERSION = 5;
 
 export const DEMO_USERS = [
-  { email: "admin@civicpulse.local", name: "Asha Admin", role: "admin" },
-  { email: "analyst@civicpulse.local", name: "Ravi Analyst", role: "analyst" },
-  { email: "policy@civicpulse.local", name: "Priya Policymaker", role: "policymaker" },
+  { email: "cm@civicpulse.local", name: "CM's Office", role: "cm", designation: "Chief Minister's Office" },
+  { email: "mp@civicpulse.local", name: "Priya Sharma (MP)", role: "policymaker", designation: "Member of Parliament" },
+  { email: "policy@civicpulse.local", name: "Priya Sharma (MP)", role: "policymaker", designation: "Member of Parliament" },
+  { email: "analyst@civicpulse.local", name: "Ravi Kumar", role: "analyst", designation: "Executive Engineer, Urban Development" },
+  { email: "admin@civicpulse.local", name: "Asha Admin", role: "admin", designation: "Platform admin" },
 ] as const;
+export const DEMO_CITIZEN = { email: "citizen@civicpulse.local", phone: "9800000001", name: "Sunita Devi", region: "IN-DL" };
 export const DEMO_PASSWORD = "demo1234";
 
 type Progress = (msg: string, pct: number) => Promise<void> | void;
@@ -43,6 +47,7 @@ export async function seedStatus(): Promise<{ status?: string; progress?: number
 const TABLES = [
   "policy_briefs", "recommendations", "cell_scores", "doc_chunks", "documents", "planned_projects", "facilities",
   "cell_indicators", "h3_cells", "clusters", "requests", "raw_messages", "reporter_contacts", "reporters", "settings",
+  "citizen_feedback", "fund_allocations", "scheme_envelopes",
   "audit_log", "job_runs", "regions", "users",
 ];
 
@@ -65,11 +70,16 @@ export async function seedAll(opts: { reset?: boolean; regions?: string[]; onPro
   const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
   for (const u of DEMO_USERS) {
     await db.query(
-      `INSERT INTO users (email, password_hash, full_name, role, region_codes) VALUES ($1,$2,$3,$4,$5)
+      `INSERT INTO users (email, password_hash, full_name, role, region_codes, designation) VALUES ($1,$2,$3,$4,$5,$6)
        ON CONFLICT (email) DO NOTHING`,
-      [u.email, hash, u.name, u.role, REGIONS.map((r) => r.code)],
+      [u.email, hash, u.name, u.role, REGIONS.map((r) => r.code), u.designation],
     );
   }
+  const [citizen] = await db.query<{ id: string }>(
+    `INSERT INTO users (email, password_hash, full_name, role, region_codes, phone) VALUES ($1,$2,$3,'citizen',$4,$5)
+     ON CONFLICT (email) DO UPDATE SET full_name=EXCLUDED.full_name RETURNING id`,
+    [DEMO_CITIZEN.email, hash, DEMO_CITIZEN.name, [DEMO_CITIZEN.region], DEMO_CITIZEN.phone],
+  );
   await appendAudit({ user_email: "system", region_code: null, action: "seed.start", entity_type: "system", entity_id: null, diff: { version: SEED_VERSION } });
 
   const regions = REGIONS.filter((r) => !opts.regions || opts.regions.includes(r.code));
@@ -79,6 +89,7 @@ export async function seedAll(opts: { reset?: boolean; regions?: string[]; onPro
     const span = 100 / regions.length;
     await seedRegion(regions[i], now, (m, p) => log(`${regions[i].name}: ${m}`, Math.round(base + (p / 100) * span)));
   }
+  await seedCitizenHistory(citizen.id, DEMO_CITIZEN.region);
   await appendAudit({ user_email: "system", region_code: null, action: "seed.complete", entity_type: "system", entity_id: null, diff: { regions: regions.map((r) => r.code) } });
   await setState({ status: "done", progress: 100, message: "ready", version: SEED_VERSION, finishedAt: new Date().toISOString(), seconds: Math.round((Date.now() - t0) / 1000) });
 }
@@ -193,5 +204,8 @@ async function seedRegion(region: RegionDef, now: Date, log: Progress) {
 
   await log("scoring, hotspots and recommendations", 75);
   await recomputeRegion(code, { briefsTopN: 10, useLLM: false, now });
+  await log("fund allocations and governance loop", 90);
+  await seedFunds(code);
+  await seedLifecycle(code, { cm: "cm@civicpulse.local", mp: "mp@civicpulse.local", dept: "analyst@civicpulse.local" });
   await log("done", 100);
 }

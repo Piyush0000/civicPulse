@@ -1,9 +1,12 @@
 import { after, type NextRequest } from "next/server";
 import { ApiError, ok, page, rateLimit, regionParam } from "@/lib/api";
-import { can, currentSession, login, SESSION_COOKIE, signSession, type Perm, type Session } from "@/lib/auth";
+import { can, currentSession, login, registerCitizen, ROLE_LABEL, SESSION_COOKIE, signSession, type Perm, type Session } from "@/lib/auth";
+import { FACILITY_TYPES } from "@/lib/analytics/whatif";
+import { allocations, endorseRecommendation, feedbackSummary, myComplaints, submitFeedback, syncAllocationsFor, updateWork, whatIf, zoneRatings } from "./services/governance";
 import { config } from "@/lib/config";
 import { bus, type PulseEvent } from "@/lib/events";
 import { intake, processRequest } from "@/lib/pipeline";
+import { MAX_PHOTO_BYTES, readLocalPhoto, storePhoto } from "@/lib/photos";
 import { handleTelegramUpdate } from "@/lib/messaging/telegram";
 import { verifyLedger } from "@/lib/ledger";
 import { seedAll } from "@/lib/seed/run";
@@ -53,33 +56,49 @@ sys("POST", "/admin/recompute", "tuneScoring", "Recompute scores, hotspots and r
 
 // ---------------------------------------------------------------- auth
 const auth = def("auth");
-auth("POST", "/auth/login", null, "Email + password login (sets an httpOnly session cookie)", async ({ req }) => {
-  rateLimit(req, "login", 10);
-  const b = await body<{ email: string; password: string }>(req);
-  const s = await login(String(b.email || ""), String(b.password || ""));
-  if (!s) throw new ApiError(401, "bad_credentials", "Invalid email or password");
-  const token = await signSession(s);
-  const res = ok({ user: s });
-  res.cookies.set(SESSION_COOKIE, token, { httpOnly: true, sameSite: "lax", path: "/", secure: process.env.NODE_ENV === "production", maxAge: 12 * 3600 });
+const setSession = async (s: Session) => {
+  const res = ok({ user: s, redirect: s.role === "citizen" ? "/citizen" : "/app" });
+  res.cookies.set(SESSION_COOKIE, await signSession(s), { httpOnly: true, sameSite: "lax", path: "/", secure: process.env.NODE_ENV === "production", maxAge: 12 * 3600 });
   return res;
+};
+auth("POST", "/auth/login", null, "Login to the government console (portal=gov) or citizen portal (portal=citizen). Sets an httpOnly session cookie.", async ({ req }) => {
+  rateLimit(req, "login", 10);
+  const b = await body<{ email: string; password: string; portal?: string }>(req);
+  const portal = b.portal === "citizen" ? "citizen" : "gov";
+  const s = await login(String(b.email || ""), String(b.password || ""), portal);
+  if (!s) throw new ApiError(401, "bad_credentials", portal === "gov" ? "Invalid government credentials" : "Invalid email/mobile or password");
+  return setSession(s);
+});
+auth("POST", "/auth/register", null, "Citizen self-registration (name, email or phone, password, region)", async ({ req }) => {
+  rateLimit(req, "register", 5);
+  const b = await body<{ name: string; email?: string; phone?: string; password: string; region: string }>(req);
+  try {
+    return setSession(await registerCitizen({ name: String(b.name || ""), email: b.email, phone: b.phone, password: String(b.password || ""), region: String(b.region || "") }));
+  } catch (e) {
+    throw new ApiError(400, "register_failed", (e as Error).message);
+  }
 });
 auth("POST", "/auth/logout", null, "Clear session", async () => {
   const res = ok({ ok: true });
   res.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
   return res;
 });
-auth("GET", "/auth/me", "view", "Current user", async ({ session }) => ({ user: session }));
+auth("GET", "/auth/me", null, "Current user (either portal)", async ({ session }) => {
+  if (!session) throw new ApiError(401, "unauthenticated", "Login required");
+  return { user: { ...session, roleLabel: ROLE_LABEL[session.role] } };
+});
+auth("GET", "/citizen/me", "citizen", "My complaints, their progress and feedback status", async ({ session }) => myComplaints(session!));
 
 // ---------------------------------------------------------------- public (citizens)
 const pub = def("public");
 pub("GET", "/public/regions", null, "Pilot regions and languages", async () => publicRegions());
-pub("POST", "/public/requests", null, "Submit a request (multipart: text?, audio?, transcript?, language?, lat?, lng?, region_code, consent=true)", async ({ req }) => {
+pub("POST", "/public/requests", null, "Submit a request (multipart: text?, audio?, photo?, transcript?, language?, lat?, lng?, region_code, consent=true). Logged-in citizens get it in 'My complaints'.", async ({ req, session }) => {
   rateLimit(req, "submit", 15);
   const form = await req.formData();
   if (form.get("consent") !== "true") throw new ApiError(400, "consent_required", "Consent is required");
   const region = String(form.get("region_code") || "");
   if (!REGION_BY_CODE[region]) throw new ApiError(400, "bad_region", "Unknown region");
-  let text = String(form.get("text") || "").slice(0, 4000);
+  const text = String(form.get("text") || "").slice(0, 4000);
   const transcript = String(form.get("transcript") || "").slice(0, 4000);
   const audio = form.get("audio");
   let audioData: { data: Buffer; mime: string } | null = null;
@@ -89,28 +108,12 @@ pub("POST", "/public/requests", null, "Submit a request (multipart: text?, audio
   }
   if (!text && !audioData && !transcript) throw new ApiError(400, "empty", "Provide text or a voice note");
 
+  // Optional evidence photo, stored separately from the text (never sent to translation/LLMs).
   const photo = form.get("photo");
   let photoUrl: string | null = null;
   if (photo && typeof photo !== "string" && photo.size > 0) {
-    const { v2: cloudinary } = await import("cloudinary");
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "hglonsuu",
-      api_key: process.env.CLOUDINARY_API_KEY || "344452153514944",
-      api_secret: process.env.CLOUDINARY_API_SECRET || "tQsLfT1364ddMuNCb6DZPb5IJiY",
-    });
-    const buffer = Buffer.from(await photo.arrayBuffer());
-    const b64 = buffer.toString("base64");
-    const dataUri = `data:${photo.type || "image/jpeg"};base64,${b64}`;
-    try {
-      const res = await cloudinary.uploader.upload(dataUri, { folder: "civicpulse_reports" });
-      photoUrl = res.secure_url;
-    } catch (e) {
-      console.error("Cloudinary upload failed", e);
-    }
-  }
-
-  if (photoUrl) {
-    text = [text, `[Attached Photo](${photoUrl})`].filter(Boolean).join("\n\n");
+    if (photo.size > MAX_PHOTO_BYTES) throw new ApiError(413, "too_large", "Photo must be under 8 MB");
+    photoUrl = await storePhoto(Buffer.from(await photo.arrayBuffer()), photo.type || "image/jpeg");
   }
 
   const lat = form.get("lat") ? Number(form.get("lat")) : null;
@@ -119,7 +122,9 @@ pub("POST", "/public/requests", null, "Submit a request (multipart: text?, audio
   const res = await intake({
     region,
     channel: "web",
-    externalUserId: `web:${anon}`,
+    // Logged-in citizens are pseudonymised by account so their complaints follow them across devices.
+    externalUserId: session?.role === "citizen" ? `citizen:${session.sub}` : `web:${anon}`,
+    photoUrl,
     externalMessageId: String(form.get("client_id") || "") || null,
     text: text || null,
     transcriptHint: transcript || null,
@@ -133,8 +138,19 @@ pub("POST", "/public/requests", null, "Submit a request (multipart: text?, audio
   out.cookies.set("cp_anon", anon, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 365 * 86400 });
   return out;
 });
+pub("GET", "/public/photos/:id", null, "Locally stored evidence photo", async ({ params }) => {
+  const p = await readLocalPhoto(params.id);
+  if (!p) throw new ApiError(404, "not_found", "Photo not found");
+  return new Response(new Uint8Array(p.data), { headers: { "content-type": p.mime, "cache-control": "private, max-age=86400" } });
+});
 pub("GET", "/public/requests/:code", null, "Track a request (no PII)", async ({ params }) => trackRequest(params.code));
 pub("GET", "/public/stats/:region", null, "k-anonymous public aggregates (res-7 grid)", async ({ params }) => publicStats(getRegion(params.region).code));
+pub("POST", "/public/feedback", null, "Citizen verification after work is done: {tracking_code, solved: yes|partly|no, rating 1-5, comment?}", async ({ req, session }) => {
+  rateLimit(req, "feedback", 20);
+  return submitFeedback(await body(req), session);
+});
+pub("GET", "/public/zones/:region", null, "Public zone (ward) leaderboard", async ({ params }) => zoneRatings(getRegion(params.region).code));
+pub("GET", "/public/allocations/:region", null, "Follow the money: scheme-wise sanctioned / released / utilised", async ({ params }) => allocations(getRegion(params.region).code));
 pub("GET", "/public/transparency", null, "Public decision log and ledger verification", async () => transparency());
 pub("GET", "/ledger/verify", null, "Verify the SHA-256 hash chain of the audit log", async () => verifyLedger());
 pub("GET", "/federation/aggregate/:region", null, "Signed aggregate-only federation payload for one instance", async ({ params }) => federationAggregate(getRegion(params.region).code));
@@ -205,6 +221,21 @@ dash("PATCH", "/recommendations/:id", "decideRecommendations", "Accept / reject 
   decideRecommendation(region(), params.id, await body(req), session!),
 );
 dash("POST", "/recommendations/:id/brief", "view", "Regenerate the AI policy brief", async ({ params, region, session }) => regenerateBrief(region(), params.id, session!));
+dash("POST", "/recommendations/:id/endorse", "endorseRecommendations", "MP/MLA endorses a recommendation to the CM with a note", async ({ req, params, region, session }) =>
+  endorseRecommendation(region(), params.id, String((await body<{ note?: string }>(req)).note || ""), session!),
+);
+dash("PATCH", "/recommendations/:id/work", "executeWork", "Department reports work_started / work_done (after CM approval)", async ({ req, params, region, session }) =>
+  updateWork(region(), params.id, await body(req), session!),
+);
+dash("GET", "/recommendations/:id/feedback", "view", "Citizen verification summary", async ({ params }) => feedbackSummary(params.id));
+dash("GET", "/zones", "view", "Zone (ward) rating: need score, complaints per 10k, service stars", async ({ region }) => zoneRatings(region()));
+dash("GET", "/allocations", "view", "Government fund allocations by scheme and project", async ({ region }) => allocations(region()));
+dash("POST", "/allocations/sync", "manageDatasets", "Pull the latest allocations from the government finance API", async ({ region, session }) => syncAllocationsFor(region(), session!));
+dash("GET", "/whatif/types", "view", "Facility types for the what-if simulator", async () => Object.entries(FACILITY_TYPES).map(([k, v]) => ({ type: k, ...v })));
+dash("POST", "/whatif", "simulate", "What if we build X here? Computed impact + AI briefing for MPs", async ({ req, region, session }) => {
+  rateLimit(req, "whatif", 30);
+  return whatIf(region(), await body(req), session!);
+});
 dash("GET", "/budget/alignment", "view", "Demand share vs investment share", async ({ region }) => budgetAlignment(region()));
 dash("GET", "/impact/projects", "view", "Before/after + control for completed projects", async ({ region }) => impactProjects(region()));
 dash("GET", "/impact/platform-metrics", "view", "DPI metrics of the platform itself", async ({ region }) => platformMetrics(region()));
