@@ -22,6 +22,7 @@
     "@electric-sql/pglite": "^0.5.8",
     "@supabase/supabase-js": "^2.117.2",
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.11.0",
     "clsx": "^2.1.1",
     "deck.gl": "^9.4.0",
     "h3-js": "^4.5.0",

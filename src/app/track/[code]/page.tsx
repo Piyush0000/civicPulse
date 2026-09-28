@@ -10,6 +10,7 @@ import { CatBadge, ErrorBox, UrgencyBadge, cx } from "@/components/ui";
 type Track = {
   trackingCode: string; region: string; category: string | null; categoryLabel: string | null; urgency: string | null; summary: string | null; area: string | null;
   status: string; pipelineStatus: string; failed: boolean; submittedAt: string; timeline: { step: keyof (typeof T)["en"]["steps"]; done: boolean }[]; neighboursReportingSame: number;
+  photoUrl: string | null;
 };
 
 export default function TrackPage({ params }: { params: Promise<{ code: string }> }) {
@@ -45,7 +46,19 @@ export default function TrackPage({ params }: { params: Promise<{ code: string }
                   {d.data.area && <span className="chip">{d.data.area}</span>}
                 </div>
               )}
-              {d.data.summary && <p className="mt-3 text-ink">{d.data.summary}</p>}
+              {d.data.summary && (() => {
+                const cleanSummary = d.data.summary.replace(/\[Attached Photo\].*/g, "").trim();
+                return (
+                  <>
+                    <p className="mt-3 text-ink">{cleanSummary}</p>
+                    {d.data.photoUrl && (
+                      <div className="mt-4">
+                        <img src={d.data.photoUrl} alt="Attached" className="max-h-64 rounded-xl object-cover" />
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               {d.data.neighboursReportingSame > 0 && (
                 <p className="mt-3 flex items-center gap-2 text-sm text-accent"><Users className="h-4 w-4" /> {t.neighbours(d.data.neighboursReportingSame)}</p>
               )}

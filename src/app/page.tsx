@@ -59,7 +59,7 @@ export default function Landing() {
         </div>
         <div className="relative mx-auto flex min-h-[640px] max-w-6xl flex-col justify-center px-4 py-16">
           <div className="max-w-xl">
-            <span className="chip border-accent/40 text-accent"><Sparkles className="h-3 w-3" /> Digital Public Good · BRICS Innovation</span>
+            <span className="chip border-accent/40 text-accent"><Sparkles className="h-3 w-3" /> Digital Public Good · Indian Innovation</span>
             <h1 className="mt-5 text-4xl font-semibold leading-[1.05] tracking-tight md:text-6xl">
               Every citizen&apos;s voice,
               <br />
@@ -100,7 +100,7 @@ export default function Landing() {
       <section className="mx-auto grid max-w-6xl grid-cols-2 gap-3 px-4 md:grid-cols-4">
         {[
           { k: "citizen requests", v: fmtCompact(totalRequests) },
-          { k: "BRICS pilot cities", v: REGIONS.length },
+          { k: "Indian pilot cities", v: REGIONS.length },
           { k: "languages understood", v: langs.size || 6 },
           { k: "paid services required", v: 0 },
         ].map((x) => (
@@ -115,7 +115,7 @@ export default function Landing() {
         <h2 className="text-3xl font-semibold tracking-tight">From a voice note to a funded project</h2>
         <div className="mt-8 grid gap-4 md:grid-cols-4">
           {[
-            { i: <Mic className="h-5 w-5" />, t: "Listen", d: "Voice, text, Telegram, IVR calls and USSD on feature phones. Hindi, Portuguese, Russian, Chinese, isiZulu, English, even Hinglish." },
+            { i: <Mic className="h-5 w-5" />, t: "Listen", d: "Voice, text, Telegram, IVR calls and USSD on feature phones. Hindi, Marathi, Tamil, Telugu, Bengali, English, even Hinglish." },
             { i: <BrainCircuit className="h-5 w-5" />, t: "Understand", d: "Speech-to-text, translation, PII redaction and structured extraction with free LLMs (offline rules as fallback). Near-duplicates become one demand signal." },
             { i: <Radar className="h-5 w-5" />, t: "Fuse & detect", d: "H3 hexagon grid × population × infrastructure gaps × vulnerability × planned budgets. Getis-Ord Gi* hotspots, emerging-outbreak alerts, bias correction." },
             { i: <Target className="h-5 w-5" />, t: "Decide", d: "Ranked projects with AI policy briefs that cite plan documents and verify every number. Decisions go to a public hash-chained ledger." },
@@ -139,7 +139,7 @@ export default function Landing() {
             { i: <Languages />, t: "Under-reporting correction", d: "Demand is divided by connectivity so quiet, poor areas are not ignored." },
             { i: <BrainCircuit />, t: "Ask CivicPulse", d: "A policy copilot that answers only through analytics tools. No invented numbers." },
             { i: <Calculator />, t: "Budget optimizer", d: "Portfolio that maximises people reached per dollar, with an equity floor." },
-            { i: <Globe2 />, t: "BRICS federation", d: "Countries keep their data; they share only k-anonymous, signed aggregates." },
+            { i: <Globe2 />, t: "Indian federation", d: "Cities keep their data; they share only k-anonymous, signed aggregates." },
             { i: <ShieldCheck />, t: "Tamper-evident ledger", d: "Every decision is hash-chained and publicly verifiable." },
             { i: <Lock />, t: "Privacy by design", d: "HMAC pseudonyms, encrypted contact mapping, PII redaction, retention limits, STOP opt-out." },
             { i: <Radar />, t: "Foresight", d: "Seasonal forecasts and emerging-hotspot alerts, so cities act before the monsoon, the winter or the outbreak." },

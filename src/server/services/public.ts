@@ -21,17 +21,25 @@ const TIMELINE = ["received", "understood", "under_review", "linked_to_project",
 export async function trackRequest(code: string) {
   const r = await q1<{
     tracking_code: string; region_code: string; category: string | null; urgency: string | null; summary: string | null; status: string;
-    pipeline_status: string; submitted_at: Date; processed_at: Date | null; admin_name: string | null; language_detected: string | null; pipeline_error: string | null;
-    cluster_id: string | null;
+    pipeline_status: string; processed_at: Date | null; submitted_at: Date; admin_name: string | null; language_detected: string | null; pipeline_error: string | null;
+    cluster_id: string | null; text_original: string | null;
   }>(
-    `SELECT tracking_code, region_code, category, urgency, summary, status, pipeline_status, submitted_at, processed_at, admin_name,
-            language_detected, pipeline_error, cluster_id FROM requests WHERE tracking_code=$1`,
+    `SELECT r.tracking_code, r.region_code, r.category, r.urgency, r.summary, r.status, r.pipeline_status, r.submitted_at, r.processed_at, r.admin_name,
+            r.language_detected, r.pipeline_error, r.cluster_id, m.text_original 
+     FROM requests r LEFT JOIN raw_messages m ON r.raw_message_id = m.id WHERE r.tracking_code=$1`,
     [code.toUpperCase()],
   );
   if (!r) throw new ApiError(404, "not_found", "No request with this tracking ID");
   const others = r.cluster_id ? await q1<{ n: number }>("SELECT count(DISTINCT reporter_id)::int n FROM requests WHERE cluster_id=$1", [r.cluster_id]) : null;
   const understood = r.pipeline_status === "completed";
   const stage = r.status === "resolved" ? 4 : r.status === "linked_to_project" ? 3 : r.status === "under_review" ? 2 : understood ? 1 : 0;
+  
+  let photoUrl: string | null = null;
+  if (r.text_original) {
+    const match = r.text_original.match(/\[Attached Photo\]\((.*?)\)/);
+    if (match) photoUrl = match[1];
+  }
+
   return {
     trackingCode: r.tracking_code,
     region: getRegion(r.region_code).name,
@@ -39,6 +47,7 @@ export async function trackRequest(code: string) {
     categoryLabel: r.category ? catLabel(r.category) : null,
     urgency: r.urgency,
     summary: understood ? r.summary : null,
+    photoUrl,
     area: r.admin_name,
     status: r.status,
     pipelineStatus: r.pipeline_status,
