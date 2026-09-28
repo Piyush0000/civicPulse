@@ -295,6 +295,7 @@ export default function SubmitPage() {
                 <Camera className="h-4 w-4" /> Take a picture
               </label>
             </div>
+            {/* eslint-disable-next-line @next/next/no-img-element -- local blob preview, not optimisable */}
             {photoPreview && <img src={photoPreview} alt="Preview" className="mt-3 max-h-48 rounded-xl object-cover" />}
           </div>
 

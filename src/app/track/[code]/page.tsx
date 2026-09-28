@@ -58,6 +58,7 @@ export default function TrackPage({ params }: { params: Promise<{ code: string }
                     <p className="mt-3 text-ink">{cleanSummary}</p>
                     {d.data.photoUrl && (
                       <div className="mt-4">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- user-uploaded evidence from Cloudinary or local storage */}
                         <img src={d.data.photoUrl} alt="Attached" className="max-h-64 rounded-xl object-cover" />
                       </div>
                     )}

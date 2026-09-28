@@ -44,6 +44,8 @@ export function useApi<T>(path: string | null, deps: unknown[] = []) {
       }
     } catch (e) {
       if (my === seq.current) setError((e as Error).message);
+      // Session expired inside a data hook (no router here): a full reload to /login also clears client state.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       if ((e as ClientError).status === 401 && typeof window !== "undefined") window.location.assign(`${location.origin}/login?next=${encodeURIComponent(location.pathname)}`);
     } finally {
       if (my === seq.current) setLoading(false);

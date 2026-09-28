@@ -1,14 +1,75 @@
-name: ci
-on: [push, pull_request]
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch/PR cancels the older run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22
+  NEXT_TELEMETRY_DISABLED: 1
+
 jobs:
-  check:
+  quality:
+    name: Typecheck · Lint · Unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
+      # next typegen generates the global PageProps/LayoutProps route types into .next/types (gitignored).
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint (no warnings allowed)
+        run: npm run lint
+      - name: Unit + integration tests
+        run: npm test
+
+  build-smoke:
+    name: Build · End-to-end smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Offline providers only: CI never calls external AI or messaging services.
+      SECRET_KEY: ci-secret-key-not-for-production-0123456789
+      PGLITE_DIR: .data/ci-pglite
+      GEOCODER: offline
+      TRANSLATE_FALLBACK: none
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**') }}
+          restore-keys: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+      - run: npm ci
+      - name: Production build
+        run: npm run build
+      - name: Start server
+        run: |
+          npm start -- -p 3000 > server.log 2>&1 &
+          echo "started"
+      - name: Smoke test (seeds the demo world, then exercises portals, RBAC, pipeline, analytics, ledger)
+        run: npm run smoke
+        env:
+          BASE_URL: http://localhost:3000
+      - name: Server log
+        if: always()
+        run: tail -n 200 server.log || true
