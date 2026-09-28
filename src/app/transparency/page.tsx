@@ -1,10 +1,15 @@
 "use client";
 
 import { Download, ShieldAlert, ShieldCheck } from "lucide-react";
+import dynamic from "next/dynamic";
+import { useState, useMemo } from "react";
 import PublicNav from "@/components/PublicNav";
 import { useApi } from "@/lib/client/hooks";
 import { REGIONS } from "@/lib/regions";
 import { CatBadge, Spinner, StatusBadge, cx } from "@/components/ui";
+import type { HexDatum } from "@/components/HexMap";
+
+const HexMap = dynamic(() => import("@/components/HexMap"), { ssr: false, loading: () => <Spinner label="Loading map…" /> });
 
 type Tr = {
   decisions: { id: string; region_code: string; title: string; category: string; status: string; decided_at: string; people_affected_est: number; decision_note: string | null }[];
@@ -13,7 +18,13 @@ type Tr = {
 };
 
 export default function TransparencyPage() {
+  const [regionCode, setRegionCode] = useState(REGIONS[0].code);
   const d = useApi<Tr>("/public/transparency");
+  const stats = useApi<any>(`/public/stats/${regionCode}`, [regionCode]);
+  const cells = useMemo<HexDatum[]>(() => {
+    return (stats.data?.cells ?? []).map((c: any) => ({ h: c.h, v: c.requests, hs: c.hotspot }));
+  }, [stats.data]);
+  const currentRegion = REGIONS.find(r => r.code === regionCode) || REGIONS[0];
   return (
     <div className="min-h-screen">
       <PublicNav />
@@ -47,6 +58,29 @@ export default function TransparencyPage() {
                   {x.decision_note && <span className="w-full text-xs italic text-mute">“{x.decision_note}”</span>}
                 </div>
               ))}
+            </div>
+
+            <h2 className="mt-12 text-lg font-semibold">Public Hotspot Map (k-anonymous)</h2>
+            <p className="mt-1 text-sm text-mute mb-4">View a privacy-preserving map of public demand. Precise locations are coarsened and cells with fewer than 5 unique reporters are hidden to protect citizen privacy.</p>
+            
+            <div className="flex gap-2 mb-4">
+              {REGIONS.map((r) => (
+                <button 
+                  key={r.code} 
+                  onClick={() => setRegionCode(r.code)}
+                  className={cx("px-3 py-1.5 text-xs rounded-full border transition-colors", regionCode === r.code ? "bg-accent/15 border-accent text-accent" : "bg-panel border-line-2 text-mute hover:text-ink")}
+                >
+                  {r.flag} {r.name}
+                </button>
+              ))}
+            </div>
+            
+            <div className="card relative h-[400px] overflow-hidden mb-12">
+               <HexMap center={currentRegion.center} zoom={10.4} cells={cells} extruded={false} />
+               <div className="pointer-events-none absolute bottom-4 left-3 flex flex-wrap gap-2 text-xs bg-panel/90 p-2 rounded-lg backdrop-blur">
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border-2 border-[#ff3250]" />Redzone / Hotspot</span>
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border-2 border-[#fd8c1e]" />Watch</span>
+               </div>
             </div>
 
             <h2 className="mt-8 text-lg font-semibold">Open data</h2>

@@ -7,7 +7,7 @@ import { H3HexagonLayer } from "@deck.gl/geo-layers";
 import { ScatterplotLayer } from "@deck.gl/layers";
 import type { Layer, PickingInfo } from "@deck.gl/core";
 
-export type HexDatum = { h: string; v: number; hs?: boolean; em?: boolean; n?: number };
+export type HexDatum = { h: string; v: number; hs?: boolean; em?: boolean; n?: number; tier?: "red" | "watch" | "normal" };
 export type Ping = { id: string; lat: number; lng: number; color: string; born: number };
 export type MapPoint = { lat: number; lng: number; color: string; label?: string; radius?: number };
 
@@ -75,6 +75,25 @@ export default function HexMap(props: {
       bearing: props.extruded ? -12 : 0,
       attributionControl: { compact: true },
       interactive: props.interactive !== false,
+      validateStyle: false,
+      transformRequest: (url, resourceType) => {
+        if (url.startsWith("mapbox://")) {
+          const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+          if (url.startsWith("mapbox://styles/")) {
+            url = url.replace("mapbox://styles/", "https://api.mapbox.com/styles/v1/");
+          } else if (url.startsWith("mapbox://sprites/")) {
+            url = url.replace("mapbox://sprites/", "https://api.mapbox.com/styles/v1/");
+            url = url.replace(/(@2x)?\.(png|json)/, (match) => `/sprite${match}`);
+          } else if (url.startsWith("mapbox://fonts/")) {
+            url = url.replace("mapbox://fonts/", "https://api.mapbox.com/fonts/v1/");
+          } else {
+            url = url.replace("mapbox://", "https://api.mapbox.com/v4/");
+            if (!url.includes(".json")) url += ".json";
+          }
+          url += (url.includes("?") ? "&" : "?") + "secure=true&access_token=" + token;
+        }
+        return { url };
+      },
     });
     if (props.interactive !== false) m.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
     const ov = new MapboxOverlay({ interleaved: false, layers: [] });
@@ -135,6 +154,17 @@ export default function HexMap(props: {
     return (v: number) => Math.max(0, Math.min(1, (v - lo) / (hi - lo || 1)));
   }, [props.cells, props.normalize]);
 
+  const cellsWithTier = useMemo(() => {
+    return props.cells.map(d => {
+      const t = norm(d.v);
+      const highNeed = t > 0.5;
+      let tier: "red" | "watch" | "normal" = "normal";
+      if (d.hs && highNeed) tier = "red";
+      else if ((d.hs && !highNeed) || (!d.hs && highNeed && (d.n ?? 0) < 5) || d.em) tier = "watch";
+      return { ...d, tier };
+    });
+  }, [props.cells, norm]);
+
   useEffect(() => {
     if (!overlay.current) return;
     const layers: Layer[] = [];
@@ -142,7 +172,7 @@ export default function HexMap(props: {
     layers.push(
       new H3HexagonLayer<HexDatum>({
         id: "cells",
-        data: props.cells,
+        data: cellsWithTier,
         getHexagon: (d) => d.h,
         getFillColor: (d) => {
           const t = norm(d.v);
@@ -154,8 +184,13 @@ export default function HexMap(props: {
         getElevation: (d) => Math.pow(norm(d.v), 2.6) * 3200,
         elevationScale: 1,
         stroked: true,
-        getLineColor: (d) => (d.h === props.selected ? [255, 255, 255, 255] : d.hs ? [255, 90, 120, 230] : d.em ? [253, 224, 71, 220] : [6, 10, 19, 90]),
-        getLineWidth: (d) => (d.h === props.selected ? 3 : d.hs || d.em ? 2 : 0.5),
+        getLineColor: (d) => {
+          if (d.h === props.selected) return [255, 255, 255, 255];
+          if (d.tier === "red") return [255, 50, 80, 240];
+          if (d.tier === "watch") return [253, 140, 30, 230];
+          return [6, 10, 19, 90];
+        },
+        getLineWidth: (d) => (d.h === props.selected ? 3 : d.tier !== "normal" ? 2 : 0.5),
         lineWidthUnits: "pixels",
         pickable: true,
         autoHighlight: true,
@@ -231,7 +266,7 @@ export default function HexMap(props: {
       );
     }
     overlay.current.setProps({ layers });
-  }, [props.cells, props.extruded, props.selected, props.highlight, props.outlines, props.points, props.pings, norm, now, props.opacity, props]);
+  }, [props.cells, cellsWithTier, props.extruded, props.selected, props.highlight, props.outlines, props.points, props.pings, norm, now, props.opacity, props]);
 
   return <div ref={el} className={props.className ?? "h-full w-full"} />;
 }
