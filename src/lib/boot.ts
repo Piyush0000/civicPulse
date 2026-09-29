@@ -27,12 +27,13 @@ export async function ensureSeeded(): Promise<void> {
 export async function boot() {
   if (g.__cpBooted) return;
   g.__cpBooted = true;
+  // Channels start immediately; citizens must never wait for the demo world to (re)build.
+  startTelegramPolling();
   try {
     await ensureSeeded();
   } catch (e) {
     console.error("[civicpulse] boot failed", e);
   }
-  startTelegramPolling();
   // Retention housekeeping every 12h (serverless deployments call POST /api/v1/admin/retention from a free cron).
   const { retentionCleanup } = await import("./retention");
   const run = () => void retentionCleanup().catch((e) => console.error("[retention]", e));

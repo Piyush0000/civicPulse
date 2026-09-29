@@ -41,7 +41,16 @@ export async function seedStatus(): Promise<{ status?: string; progress?: number
   const row = await q1<{ value: { status?: string; progress?: number; message?: string; version?: number } }>(
     "SELECT value FROM app_state WHERE key='seed'",
   );
-  return row?.value ?? null;
+  // Tolerate a value stored as a JSON string by older builds (double-encoded jsonb).
+  const v = row?.value as unknown;
+  if (typeof v === "string") {
+    try {
+      return JSON.parse(v);
+    } catch {
+      return null;
+    }
+  }
+  return (v as { status?: string; progress?: number; message?: string; version?: number } | undefined) ?? null;
 }
 
 const TABLES = [
