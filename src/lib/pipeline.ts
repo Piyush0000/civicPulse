@@ -144,7 +144,7 @@ export async function processRequest(requestId: string): Promise<void> {
         sttLang = stt.language;
       } else if (raw.transcript_hint) text = [text, raw.transcript_hint].filter(Boolean).join("\n");
     } else if (!text && raw.transcript_hint) text = raw.transcript_hint;
-    if (!text) throw new Error("No text or transcript available. Add GROQ_API_KEY or GEMINI_API_KEY for server-side speech-to-text.");
+    if (!text) throw new Error("No text or transcript available: speech-to-text is not configured on the server.");
     await setStatus(req.id, "transcribed", log);
 
     // 2. language

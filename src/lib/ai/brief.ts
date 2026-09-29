@@ -112,6 +112,7 @@ export async function generateBrief(p: BriefPayload): Promise<{ markdown: string
       const user = `INPUT JSON:\n${JSON.stringify(p, null, 2)}`;
       for (let attempt = 0; attempt < 2; attempt++) {
         const r = await chat({
+          prefer: "gemini", // long-form policy writing
           messages: [
             { role: "system", content: BRIEF_SYSTEM },
             { role: "user", content: attempt === 0 ? user : `${user}\n\nYour previous draft contained numbers not in the input. Use ONLY numbers from the input JSON.` },

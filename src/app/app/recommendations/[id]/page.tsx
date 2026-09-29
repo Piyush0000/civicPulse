@@ -100,7 +100,6 @@ export default function RecommendationDetail({ params }: { params: Promise<{ id:
               <>
                 <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-faint">
                   <span className="chip">v{r.brief.version}</span>
-                  <span className="chip">{r.brief.model_name}</span>
                   <span>{new Date(r.brief.generated_at).toLocaleString()}</span>
                   {r.brief.validation_warning ? (
                     <span className="chip border-warn/50 text-warn"><AlertTriangle className="h-3 w-3" /> numbers not in evidence: {r.brief.unverified_numbers.join(", ")}</span>

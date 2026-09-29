@@ -76,6 +76,7 @@ export async function translateToEnglish(text: string, sourceLang: string): Prom
   if (hasLLM()) {
     try {
       const r = await chat({
+        prefer: "groq",
         messages: [
           { role: "system", content: TRANSLATE_SYSTEM },
           { role: "user", content: text },

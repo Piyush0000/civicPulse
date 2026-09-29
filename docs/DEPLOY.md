@@ -41,6 +41,5 @@ No personal data crosses borders.
   - *Typecheck · Lint · Unit tests*: `npm run typecheck` (runs `next typegen` first, because Next 16 route types live in the gitignored `.next/types`), `npm run lint` (zero warnings allowed), `npm test`.
   - *Build · End-to-end smoke test*: `npm run build`, `npm start`, then `npm run smoke`. The smoke test waits for the demo world to seed and checks portals, RBAC, the AI pipeline, analytics, what-if and the ledger. It uses offline providers only.
 - **`Deploy`** (`.github/workflows/deploy.yml`) runs after a green CI on `main` and deploys to Vercel. It is **opt-in**: add repository secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (from `npx vercel link` → `.vercel/project.json`). Without them it logs a notice and skips.
-- **Dependabot** opens weekly grouped updates for npm and GitHub Actions.
 
 Run the same checks locally with `npm run ci`, and the smoke test against a running server with `npm run smoke`.

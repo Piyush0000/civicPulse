@@ -68,7 +68,7 @@ export function providerStatus(): ProviderStatus {
     database: config.databaseUrl ? "supabase/postgres" : "pglite (embedded)",
     llm,
     stt,
-    embeddings: config.geminiKey ? `gemini:${config.geminiEmbedModel}` : "hashed char n-grams (offline)",
+    embeddings: "hashed char n-grams (local)",
     realtime: config.supabaseUrl ? "supabase" : "sse",
     telegram: config.telegramToken ? config.telegramMode : "disabled",
     geocoder: config.geocoder,

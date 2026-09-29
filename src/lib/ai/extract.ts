@@ -58,7 +58,7 @@ export async function extract(input: {
     { role: "user" as const, content: user },
   ];
   try {
-    const first = await chat({ messages, json: true, temperature: 0 });
+    const first = await chat({ prefer: "groq", messages, json: true, temperature: 0 });
     let parsed: unknown;
     let err = "";
     try {
@@ -71,6 +71,7 @@ export async function extract(input: {
     }
     // Retry once with the validation error appended.
     const second = await chat({
+      prefer: "groq",
       messages: [
         ...messages,
         { role: "assistant", content: first.text },

@@ -199,11 +199,11 @@ function ProviderBox({ status, aiLive }: { status: Status | null; aiLive: boolea
   const p = status.providers;
   return (
     <div className="m-3 rounded-xl border border-line bg-panel-2 p-3 text-[11px] leading-5 text-mute">
-      <div className="mb-1 font-semibold uppercase tracking-wider text-faint">Free stack</div>
-      <Row k="AI" v={aiLive ? p.llm[0].split(":")[0] : "offline rules"} ok={aiLive} />
-      <Row k="Voice" v={p.stt[0].startsWith("browser") ? "browser STT" : p.stt[0].split(":")[0]} ok={!p.stt[0].startsWith("browser")} />
-      <Row k="DB" v={p.database.split(" ")[0]} ok />
-      <Row k="Realtime" v={p.realtime} ok />
+      <div className="mb-1 font-semibold uppercase tracking-wider text-faint">System status</div>
+      <Row k="AI" v={aiLive ? "online" : "offline mode"} ok={aiLive} />
+      <Row k="Voice" v={p.stt[0].startsWith("browser") ? "browser only" : "online"} ok={!p.stt[0].startsWith("browser")} />
+      <Row k="Database" v="connected" ok />
+      <Row k="Live feed" v="on" ok />
       <Row k="Telegram" v={p.telegram} ok={p.telegram !== "disabled"} />
     </div>
   );

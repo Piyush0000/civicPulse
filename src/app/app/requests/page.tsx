@@ -177,7 +177,6 @@ function Drawer({ id, region, onClose, onSaved }: { id: string; region: string; 
               <Field k="Affected">{r.affected_group}</Field>
               <Field k="Location">{r.admin_name ?? <span className="text-warn">unlocated</span>} <span className="text-xs text-faint">({r.location_precision})</span></Field>
               <Field k="Confidence">{r.extraction_confidence != null ? `${Math.round(r.extraction_confidence * 100)}%` : "–"}</Field>
-              <Field k="Structured by"><span className="text-xs">{r.extraction_provider}</span></Field>
             </div>
             {r.pipeline_log?.length > 0 && (
               <div>
@@ -187,7 +186,7 @@ function Drawer({ id, region, onClose, onSaved }: { id: string; region: string; 
                     <li key={i} className="flex items-center gap-2">
                       <span className={cx("h-1.5 w-1.5 rounded-full", s.step === "failed" ? "bg-bad" : "bg-ok")} />
                       <span className="w-20 text-mute">{s.step}</span>
-                      <span className="flex-1 truncate text-ink">{s.info}</span>
+                      <span className="flex-1 truncate text-ink">{traceInfo(s.step, s.info)}</span>
                       <span className="font-mono text-faint">{s.ms}ms</span>
                     </li>
                   ))}
@@ -238,6 +237,15 @@ function Drawer({ id, region, onClose, onSaved }: { id: string; region: string; 
       </aside>
     </div>
   );
+}
+
+/** Pipeline trace for officials: show what happened, not which AI vendor did it. */
+function traceInfo(step: string, info?: string): string {
+  if (!info) return "";
+  if (step === "extracted") return info.split("→").pop()!.trim();
+  if (step === "transcribed") return info === "none" ? "no transcript" : "speech converted to text";
+  if (step === "translated") return info === "identity" ? "already English" : info === "none" ? "not translated" : "translated to English";
+  return info;
 }
 
 function Field({ k, children, wide }: { k: string; children: React.ReactNode; wide?: boolean }) {

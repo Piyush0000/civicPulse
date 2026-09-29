@@ -84,7 +84,6 @@ export default function CopilotPage() {
                       {m.content}
                     </ReactMarkdown>
                   </div>
-                  {m.provider && <div className="mt-2 text-[10px] text-faint">answered by {m.provider}</div>}
                 </div>
               </div>
             ))}

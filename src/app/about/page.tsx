@@ -48,7 +48,7 @@ export default function About() {
 
         <h2 className="mt-10 text-xl font-semibold">Zero paid services</h2>
         <p className="mt-3 text-mute">
-          The full platform runs with no API keys at all. Optional free tiers make it smarter: Groq (Whisper speech-to-text and Llama 3.3), Google Gemini,
+          The full platform runs with no API keys at all. Optional free tiers make it smarter: Google Gemini and other free AI APIs,
           Supabase (Postgres + Realtime), Telegram Bot API, OpenFreeMap tiles, Nominatim geocoding and MyMemory translation.
         </p>
       </main>

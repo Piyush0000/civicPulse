@@ -135,7 +135,6 @@ export default function WhatIfPage() {
               </Section>
               <Section title={<span className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-accent-2" /> Briefing for the MP</span>}>
                 <div className="mb-2 flex flex-wrap gap-2 text-[11px] text-faint">
-                  <span className="chip">{res.model}</span>
                   {res.unverifiedNumbers.length === 0 ? (
                     <span className="chip border-ok/40 text-ok"><Check className="h-3 w-3" /> numbers verified</span>
                   ) : (

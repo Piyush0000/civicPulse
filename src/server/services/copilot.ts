@@ -115,7 +115,7 @@ export async function askCopilot(region: string, question: string, history: { ro
     try {
       const messages: ChatMessage[] = [{ role: "system", content: SYSTEM(region) }, ...history.slice(-6), { role: "user", content: question }];
       for (let i = 0; i < 5; i++) {
-        const r = await chat({ messages, tools: Object.values(TOOLS).map((t) => t.def), temperature: 0.1, maxTokens: 900 });
+        const r = await chat({ prefer: "groq", messages, tools: Object.values(TOOLS).map((t) => t.def), temperature: 0.1, maxTokens: 900 });
         if (!r.toolCalls.length) return { answer: r.text, steps, provider: `${r.provider}:${r.model}` };
         messages.push({ role: "assistant", content: r.text || null, tool_calls: r.toolCalls });
         for (const tc of r.toolCalls) {
@@ -188,7 +188,7 @@ async function ruleCopilot(region: string, question: string, run: (n: string, a:
     for (const r of rows) lines.push(`${r.rank}. **${r.title}**: score ${r.priority_score}/100, about ${r.people_affected.toLocaleString("en-US")} people, ${r.requests_90d} requests in 90 days, ${r.funded_overlap_pct}% already funded (${r.status}).`);
     lines.push(``, `Suggestion: open the #1 recommendation to read its evidence brief and record a decision.`);
   }
-  lines.push(``, `<sub>Offline mode: answered by rule-based routing over the same analytics tools. Add a free GROQ_API_KEY or GEMINI_API_KEY for conversational answers.</sub>`);
+  lines.push(``, `<sub>Offline mode: answered by rule-based routing over the same analytics tools.</sub>`);
   return { answer: lines.join("\n"), steps, provider: "rules (offline)" };
 }
 

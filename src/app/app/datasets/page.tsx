@@ -155,7 +155,7 @@ function IvrSimulator({ region }: { region: string }) {
   };
   return (
     <Section title="IVR simulator">
-      <p className="mb-2 text-xs text-mute">Upload a recorded call (wav/mp3/ogg). Groq Whisper transcribes it when a free key is set; otherwise paste a transcript.</p>
+      <p className="mb-2 text-xs text-mute">Upload a recorded call (wav/mp3/ogg). It is transcribed automatically when AI is online; otherwise paste a transcript.</p>
       <input type="file" accept="audio/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="mb-2 w-full text-xs text-mute file:mr-3 file:rounded-lg file:border-0 file:bg-panel-3 file:px-3 file:py-1.5 file:text-ink" />
       <textarea className="input mb-2 h-16 resize-none text-xs" placeholder="Optional transcript, e.g. 'Burari mein teen din se bijli nahi hai'" value={transcript} onChange={(e) => setTranscript(e.target.value)} />
       <button className="btn-ghost w-full text-xs" onClick={send} disabled={!file && !transcript}><Phone className="h-4 w-4" /> Simulate call</button>
