@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ClipboardCheck, HardHat, LogOut, MapPin, Mic, Star, Trophy } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bell, ClipboardCheck, HardHat, LogOut, MapPin, Mic, Star, Trophy } from "lucide-react";
 import { api, timeAgo, useApi } from "@/lib/client/hooks";
 import { getRegion } from "@/lib/regions";
 import { PulseLogo } from "@/components/AppShell";
 import FeedbackForm from "@/components/FeedbackForm";
+import { enablePush, onForegroundPush, pushConfigured } from "@/lib/client/firebase";
 import { CatBadge, Empty, Spinner, StatusBadge, UrgencyBadge, cx } from "@/components/ui";
 
 type Complaint = {
@@ -67,6 +68,8 @@ export default function CitizenHome() {
           <Stat icon={<Star className="h-4 w-4" />} k="Awaiting my verification" v={c.filter((x) => x.status === "resolved" && x.rec_title && !x.my_solved).length} />
         </div>
 
+        {pushConfigured && <PushCard />}
+
         <h2 className="mt-8 text-lg font-semibold">My complaints</h2>
         <div className="mt-3 flex flex-col gap-3">
           {c.length === 0 && <Empty>No complaints yet. Reports you send while logged in appear here.</Empty>}
@@ -122,6 +125,77 @@ export default function CitizenHome() {
           </table>
         </div>
       </main>
+    </div>
+  );
+}
+
+/** Firebase Cloud Messaging: citizens get a push when their complaint is approved and when work is done. */
+function PushCard() {
+  const [state, setState] = useState<"idle" | "busy" | "on" | "error">("idle");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ title: string; body: string } | null>(null);
+
+  useEffect(() => {
+    let off = () => {};
+    try {
+      // Browser-only state, readable after mount (server render cannot know the permission).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") setState("on");
+    } catch {
+      /* no Notification API */
+    }
+    void onForegroundPush((title, body) => setToast({ title, body })).then((u) => (off = u));
+    return () => off();
+  }, []);
+
+  const enable = async () => {
+    setState("busy");
+    setMsg(null);
+    try {
+      const token = await enablePush();
+      await api("/citizen/push-token", { method: "POST", json: { token } });
+      setState("on");
+      setMsg("Notifications are on for this device.");
+    } catch (e) {
+      setState("error");
+      setMsg((e as Error).message);
+    }
+  };
+  const test = async () => {
+    setMsg(null);
+    try {
+      await enablePush().then((token) => api("/citizen/push-token", { method: "POST", json: { token } }));
+      const r = await api<{ sent: number }>("/citizen/push-test", { method: "POST" });
+      setMsg(r.sent ? "Test notification sent. It should appear in a moment." : "Could not deliver: try turning notifications on again.");
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+  };
+
+  return (
+    <div className="card mt-6 flex flex-wrap items-center gap-3 p-4">
+      <Bell className={cx("h-5 w-5", state === "on" ? "text-ok" : "text-accent")} />
+      <div className="min-w-0 flex-1">
+        <div className="font-medium text-ink">{state === "on" ? "Notifications are on" : "Get notified about your complaints"}</div>
+        <div className="text-xs text-mute">We&apos;ll tell you when the CM&apos;s office approves your issue and when work is done, so you can confirm it&apos;s really fixed.</div>
+        {msg && <div className={cx("mt-1 text-xs", state === "error" ? "text-bad" : "text-accent")}>{msg}</div>}
+      </div>
+      {state === "on" ? (
+        <button className="btn-ghost text-xs" onClick={test}>Send test</button>
+      ) : (
+        <button className="btn-primary text-xs" onClick={enable} disabled={state === "busy"}>
+          {state === "busy" ? "Enabling…" : "Turn on notifications"}
+        </button>
+      )}
+      {toast && (
+        <div className="cp-in fixed bottom-4 right-4 z-50 max-w-sm rounded-xl border border-accent/40 bg-panel p-4 shadow-2xl" role="status">
+          <div className="flex items-start gap-2">
+            <Bell className="mt-0.5 h-4 w-4 text-accent" />
+            <div className="text-sm"><div className="font-medium text-ink">{toast.title}</div><div className="text-mute">{toast.body}</div></div>
+            <button onClick={() => setToast(null)} className="ml-2 text-faint hover:text-ink" aria-label="Dismiss">✕</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

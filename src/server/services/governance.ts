@@ -16,6 +16,7 @@ import { getRegion } from "@/lib/regions";
 import { pctRank } from "@/lib/stats";
 import { sendTelegram } from "@/lib/messaging/telegram";
 import { impactProjects } from "./planning";
+import { notifyRecommendationCitizens } from "@/lib/push";
 
 const DAY = 86400000;
 
@@ -41,6 +42,10 @@ export async function onApproved(region: string, id: string) {
     `UPDATE requests SET recommendation_id=$1 WHERE region_code=$2 AND category=$3 AND h3_cell = ANY($4::text[]) AND is_actionable AND recommendation_id IS NULL`,
     [id, region, rec.category, rec.h3_cells],
   );
+  void notifyRecommendationCitizens(id, (code) => ({
+    title: "Your complaint is now a government project ✅",
+    body: `${code}: approved by the CM's office${scheme ? ` under ${scheme}` : ""}. We will tell you when work is done.`,
+  })).catch(() => undefined);
 }
 
 export async function updateWork(region: string, id: string, body: { stage?: string; note?: string; contractor?: string }, s: Session) {
@@ -68,6 +73,7 @@ export async function updateWork(region: string, id: string, body: { stage?: str
 
 /** Close the loop: ask every citizen with a reply channel whether the problem is really fixed. */
 async function askForFeedback(recId: string, title: string) {
+  void notifyRecommendationCitizens(recId, (code) => ({ title: "Work reported done: is it really fixed?", body: `${code}: "${title}". Tap to verify with a rating.` })).catch(() => undefined);
   const rows = await q<{ tracking_code: string; external_id_encrypted: string; channel: string }>(
     `SELECT DISTINCT ON (c.reporter_id) r.tracking_code, c.external_id_encrypted, c.channel
        FROM requests r JOIN reporter_contacts c ON c.reporter_id = r.reporter_id WHERE r.recommendation_id=$1 AND NOT r.is_synthetic`,

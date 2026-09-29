@@ -1,12 +1,14 @@
 import { after, type NextRequest } from "next/server";
 import { ApiError, ok, page, rateLimit, regionParam } from "@/lib/api";
-import { can, currentSession, login, registerCitizen, ROLE_LABEL, SESSION_COOKIE, signSession, type Perm, type Session } from "@/lib/auth";
+import { can, currentSession, login, loginWithGoogle, registerCitizen, ROLE_LABEL, SESSION_COOKIE, signSession, type Perm, type Session } from "@/lib/auth";
 import { FACILITY_TYPES } from "@/lib/analytics/whatif";
 import { allocations, endorseRecommendation, feedbackSummary, myComplaints, submitFeedback, syncAllocationsFor, updateWork, whatIf, zoneRatings } from "./services/governance";
 import { config } from "@/lib/config";
 import { bus, type PulseEvent } from "@/lib/events";
 import { intake, processRequest } from "@/lib/pipeline";
 import { MAX_PHOTO_BYTES, readLocalPhoto, storePhoto } from "@/lib/photos";
+import { sendPush } from "@/lib/firebase-admin";
+import { q } from "@/lib/db";
 import { handleTelegramUpdate } from "@/lib/messaging/telegram";
 import { verifyLedger } from "@/lib/ledger";
 import { seedAll } from "@/lib/seed/run";
@@ -77,6 +79,30 @@ auth("POST", "/auth/register", null, "Citizen self-registration (name, email or 
   } catch (e) {
     throw new ApiError(400, "register_failed", (e as Error).message);
   }
+});
+auth("POST", "/auth/google", null, "Citizen 'Continue with Google' (Firebase ID token → session)", async ({ req }) => {
+  rateLimit(req, "google", 10);
+  const b = await body<{ idToken?: string; region?: string }>(req);
+  if (!b.idToken) throw new ApiError(400, "no_token", "idToken required");
+  try {
+    return setSession(await loginWithGoogle(b.idToken, String(b.region || "IN-DL")));
+  } catch (e) {
+    throw new ApiError(401, "google_login_failed", (e as Error).message);
+  }
+});
+auth("POST", "/citizen/push-token", "citizen", "Register this browser for push notifications (FCM token)", async ({ req, session }) => {
+  const b = await body<{ token?: string }>(req);
+  const token = String(b.token || "");
+  if (token.length < 20 || token.length > 4096) throw new ApiError(400, "bad_token", "Invalid push token");
+  await q("INSERT INTO push_tokens (token, user_id) VALUES ($1,$2) ON CONFLICT (token) DO UPDATE SET user_id=EXCLUDED.user_id, created_at=now()", [token, session!.sub]);
+  return { ok: true };
+});
+auth("POST", "/citizen/push-test", "citizen", "Send a test notification to my registered browsers", async ({ session }) => {
+  const rows = await q<{ token: string }>("SELECT token FROM push_tokens WHERE user_id=$1", [session!.sub]);
+  if (!rows.length) throw new ApiError(409, "no_tokens", "Turn on notifications first");
+  const res = await sendPush(rows.map((r) => r.token), { title: "CivicPulse notifications are on ✅", body: "You'll hear from us when your complaint is approved and when work is done.", link: "/citizen" });
+  if (res.invalid.length) await q("DELETE FROM push_tokens WHERE token = ANY($1::text[])", [res.invalid]);
+  return res;
 });
 auth("POST", "/auth/logout", null, "Clear session", async () => {
   const res = ok({ ok: true });

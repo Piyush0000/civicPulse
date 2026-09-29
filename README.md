@@ -40,7 +40,7 @@ Other commands: `npm test` (56 unit + integration tests), `npm run typecheck`, `
 | | |
 |---|---|
 | 🇮🇳 **5 pilot cities** | Delhi (Hindi, Hinglish, English), Mumbai (Marathi), Chennai (Tamil), Kolkata (Bengali), Hyderabad (Telugu) |
-| 🔐 **Two portals** | Citizens (self sign-up, "My complaints", verify fixes) and Government (CM's office, MP/MLA, departments), strict RBAC |
+| 🔐 **Two portals** | Citizens (self sign-up or **Continue with Google** via Firebase Auth, push notifications via Firebase Cloud Messaging, "My complaints", verify fixes) and Government (CM's office, MP/MLA, departments), strict RBAC |
 | 🏛 **Governance loop** | MP endorses → CM's office approves → department reports work started/done → residents verify "is it really fixed?" → project **verified** or **disputed** |
 | 🏆 **Zone ratings** | Ward leaderboard: need score (complaints/capita, critical share, hotspots, backlog) + service stars (resolution, verified satisfaction); priority zones on the map |
 | 💸 **Fund allocations** | Scheme-wise envelope → sanctioned → released → utilised → headroom (AMRUT 2.0, SBM-U 2.0, PMAY-U, PM-ABHIM…) via a govt finance API / data.gov.in / synthetic PFMS-like ledger |

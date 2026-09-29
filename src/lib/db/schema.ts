@@ -361,6 +361,15 @@ CREATE TABLE IF NOT EXISTS scheme_envelopes (
   PRIMARY KEY (region_code, scheme, fy)
 );
 
+-- v3: Firebase Google Sign-In + web push
+ALTER TABLE users ADD COLUMN IF NOT EXISTS firebase_uid text;
+CREATE UNIQUE INDEX IF NOT EXISTS users_firebase_uid ON users (firebase_uid) WHERE firebase_uid IS NOT NULL;
+CREATE TABLE IF NOT EXISTS push_tokens (
+  token text PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS job_runs (
   id bigserial PRIMARY KEY,
   name text NOT NULL,

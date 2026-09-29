@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { config } from "./config";
-import { q1 } from "./db";
+import { q, q1 } from "./db";
 import { REGION_BY_CODE } from "./regions";
 
 // Two portals share one session format:
@@ -69,6 +69,28 @@ export async function registerCitizen(input: { name: string; email?: string; pho
     [email || `${phone}@citizen.local`, hash, input.name.trim(), [input.region], phone || null],
   );
   return toSession(row!);
+}
+
+/** Citizen "Continue with Google" via Firebase Authentication. Government accounts never sign in this way. */
+export async function loginWithGoogle(idToken: string, region: string): Promise<Session> {
+  const { verifyFirebaseIdToken } = await import("./firebase-admin");
+  const t = await verifyFirebaseIdToken(idToken);
+  if (t.firebase?.sign_in_provider !== "google.com") throw new Error("Only Google sign-in is supported here");
+  const email = (t.email || "").toLowerCase();
+  if (!email || !t.email_verified) throw new Error("Google account email is not verified");
+  let u = await q1<UserRow>("SELECT * FROM users WHERE firebase_uid=$1 OR lower(email)=$2", [t.uid, email]);
+  if (u && u.role !== "citizen") throw new Error("This email belongs to a government account. Use the Government login.");
+  if (!u) {
+    const hash = await bcrypt.hash(crypto.randomUUID() + crypto.randomUUID(), 10); // unusable password; Google-only account
+    u = await q1<UserRow>(
+      `INSERT INTO users (email, password_hash, full_name, role, region_codes, firebase_uid) VALUES ($1,$2,$3,'citizen',$4,$5) RETURNING *`,
+      [email, hash, String(t.name || email.split("@")[0]).slice(0, 80), [REGION_BY_CODE[region] ? region : "IN-DL"], t.uid],
+    );
+  } else if (!(u as UserRow & { firebase_uid?: string }).firebase_uid) {
+    await q("UPDATE users SET firebase_uid=$2 WHERE id=$1", [u.id, t.uid]);
+  }
+  if (!u!.is_active) throw new Error("Account disabled");
+  return toSession(u!);
 }
 
 export async function currentSession(): Promise<Session | null> {
