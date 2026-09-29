@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { useCallback, Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, MapPinOff, Search, X } from "lucide-react";
 import { CATEGORIES, catLabel } from "@/lib/categories";
 import { api, fmt, timeAgo, useApi, useRegion } from "@/lib/client/hooks";
-import { CatBadge, Empty, ErrorBox, LANG_LABEL, Spinner, StatusBadge, UrgencyBadge, cx } from "@/components/ui";
+import { CatBadge, Empty, ErrorBox, LANG_LABEL, Skeleton, Spinner, StatusBadge, UrgencyBadge, cx } from "@/components/ui";
 
 type Row = {
   id: string; tracking_code: string; channel: string; language_detected: string; category: string; subcategory: string; urgency: string; summary: string;
@@ -34,6 +34,49 @@ function RequestsInner() {
   for (const [k, v] of Object.entries(f)) if (v) qs.set(k, String(v));
   const list = useApi<{ total: number; rows: Row[] }>(`/requests?${qs}`, [qs.toString()]);
   const pages = Math.max(1, Math.ceil((list.data?.total ?? 0) / 40));
+
+  const searchRef = useRef<HTMLInputElement>(null);
+  // Keyboard cursor; it resets automatically whenever a new page of rows arrives (derived, no effect).
+  const [cursor, setCursor] = useState<{ rows: unknown; i: number }>({ rows: null, i: -1 });
+  const activeIndex = cursor.rows === list.data?.rows ? cursor.i : -1;
+  const rows = list.data?.rows;
+  const setActiveIndex = useCallback((fn: (prev: number) => number) => setCursor((c) => ({ rows, i: fn(c.rows === rows ? c.i : -1) })), [rows]);
+
+  // Keyboard navigation (J/K) and global search (Cmd+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
+      
+      // Don't intercept if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) {
+        return;
+      }
+
+      if (e.key === "j") {
+        e.preventDefault();
+        setActiveIndex(prev => {
+          const max = list.data ? list.data.rows.length - 1 : 0;
+          return prev < max ? prev + 1 : prev;
+        });
+      } else if (e.key === "k") {
+        e.preventDefault();
+        setActiveIndex(prev => prev > 0 ? prev - 1 : prev);
+      } else if (e.key === "Enter" && activeIndex >= 0 && list.data?.rows[activeIndex]) {
+        e.preventDefault();
+        setOpen(list.data.rows[activeIndex].id);
+      } else if (e.key === "Escape") {
+        setOpen(null);
+        searchRef.current?.blur();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeIndex, list.data, setActiveIndex]);
 
   const sel = (k: keyof typeof f, opts: { v: string; l: string }[], label: string) => (
     <select className="input w-auto py-1.5 text-xs" value={String(f[k])} onChange={(e) => setF({ ...f, [k]: e.target.value })} aria-label={label}>
@@ -64,7 +107,11 @@ function RequestsInner() {
       <div className="card flex flex-wrap items-center gap-2 p-3">
         <div className="relative min-w-56 flex-1">
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-faint" />
-          <input className="input pl-9" placeholder="Search text, summary or tracking ID…" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} />
+          <input ref={searchRef} className="input pl-9 pr-14" placeholder="Search text, summary or tracking ID…" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} />
+          <div className="pointer-events-none absolute right-3 top-2 flex items-center gap-1 opacity-50">
+            <kbd className="rounded border border-line bg-panel-2 px-1 font-sans text-[10px] font-medium text-mute">⌘</kbd>
+            <kbd className="rounded border border-line bg-panel-2 px-1 font-sans text-[10px] font-medium text-mute">K</kbd>
+          </div>
         </div>
         {sel("category", CATEGORIES.map((c) => ({ v: c, l: catLabel(c) })), "Category")}
         {sel("urgency", ["critical", "high", "medium", "low"].map((v) => ({ v, l: v })), "Urgency")}
@@ -76,7 +123,38 @@ function RequestsInner() {
 
       <div className="card overflow-hidden">
         {list.error && <ErrorBox msg={list.error} />}
-        {!list.data && !list.error && <Spinner />}
+        {!list.data && !list.error && (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-sm">
+              <thead className="border-b border-line text-left text-[11px] uppercase tracking-wider text-faint">
+                <tr>
+                  <th className="px-4 py-2.5 font-medium">Tracking</th>
+                  <th className="px-2 py-2.5 font-medium">Summary</th>
+                  <th className="px-2 py-2.5 font-medium">Category</th>
+                  <th className="px-2 py-2.5 font-medium">Urgency</th>
+                  <th className="px-2 py-2.5 font-medium">Area</th>
+                  <th className="px-2 py-2.5 font-medium">Lang · channel</th>
+                  <th className="px-2 py-2.5 font-medium">Status</th>
+                  <th className="px-4 py-2.5 text-right font-medium">When</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <tr key={i}>
+                    <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
+                    <td className="px-2 py-3"><Skeleton className="h-4 w-64" /></td>
+                    <td className="px-2 py-3"><Skeleton className="h-4 w-16" /></td>
+                    <td className="px-2 py-3"><Skeleton className="h-4 w-12" /></td>
+                    <td className="px-2 py-3"><Skeleton className="h-4 w-24" /></td>
+                    <td className="px-2 py-3"><Skeleton className="h-4 w-20" /></td>
+                    <td className="px-2 py-3"><Skeleton className="h-4 w-16" /></td>
+                    <td className="px-4 py-3"><div className="flex justify-end"><Skeleton className="h-4 w-12" /></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
         {list.data && list.data.rows.length === 0 && <div className="p-4"><Empty>No requests match these filters.</Empty></div>}
         {list.data && list.data.rows.length > 0 && (
           <div className="overflow-x-auto">
@@ -94,8 +172,8 @@ function RequestsInner() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {list.data.rows.map((r) => (
-                  <tr key={r.id} onClick={() => setOpen(r.id)} className={cx("cursor-pointer hover:bg-panel-2", open === r.id && "bg-panel-2")}>
+                {list.data.rows.map((r, i) => (
+                  <tr key={r.id} onClick={() => setOpen(r.id)} className={cx("cursor-pointer hover:bg-panel-2 transition-colors", open === r.id ? "bg-panel-2" : "", activeIndex === i && "ring-1 ring-inset ring-accent bg-accent/5")}>
                     <td className="px-4 py-2.5 font-mono text-xs text-mute">
                       {r.tracking_code}
                       {!r.is_synthetic && <span className="ml-1.5 rounded bg-accent/15 px-1 text-[10px] text-accent">LIVE</span>}
@@ -148,8 +226,8 @@ function Drawer({ id, region, onClose, onSaved }: { id: string; region: string; 
 
   const r = d.data;
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/50" onClick={onClose}>
-      <aside className="h-full w-full max-w-xl overflow-y-auto border-l border-line bg-panel p-5" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-40 flex justify-end bg-black/50 animate-fade-in" onClick={onClose}>
+      <aside className="h-full w-full max-w-xl overflow-y-auto border-l border-line bg-panel p-5 animate-slide-in-right" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-start justify-between">
           <div>
             <div className="font-mono text-sm text-accent">{r?.tracking_code}</div>

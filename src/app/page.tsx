@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cellToLatLng } from "h3-js";
 import {
-  ArrowRight, BrainCircuit, Calculator, Globe2, Languages, Lock, Mic, Radar, ShieldCheck, Smartphone, Sparkles, Target, WifiOff,
+  ArrowRight, BrainCircuit, Calculator, Globe2, Languages, Mic, Radar, ShieldCheck, Smartphone, Target, WifiOff,
 } from "lucide-react";
 import PublicNav from "@/components/PublicNav";
 import { REGIONS } from "@/lib/regions";

@@ -76,7 +76,7 @@ export default function HexMap(props: {
       attributionControl: { compact: true },
       interactive: props.interactive !== false,
       validateStyle: false,
-      transformRequest: (url, resourceType) => {
+      transformRequest: (url) => {
         if (url.startsWith("mapbox://")) {
           const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
           if (url.startsWith("mapbox://styles/")) {

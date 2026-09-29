@@ -20,9 +20,9 @@ type Tr = {
 export default function TransparencyPage() {
   const [regionCode, setRegionCode] = useState(REGIONS[0].code);
   const d = useApi<Tr>("/public/transparency");
-  const stats = useApi<any>(`/public/stats/${regionCode}`, [regionCode]);
+  const stats = useApi<{ cells: { h: string; requests: number; hotspot: boolean }[] }>(`/public/stats/${regionCode}`, [regionCode]);
   const cells = useMemo<HexDatum[]>(() => {
-    return (stats.data?.cells ?? []).map((c: any) => ({ h: c.h, v: c.requests, hs: c.hotspot }));
+    return (stats.data?.cells ?? []).map((c) => ({ h: c.h, v: c.requests, hs: c.hotspot }));
   }, [stats.data]);
   const currentRegion = REGIONS.find(r => r.code === regionCode) || REGIONS[0];
   return (

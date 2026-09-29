@@ -90,6 +90,10 @@ export function Empty({ children }: { children: ReactNode }) {
   return <div className="rounded-xl border border-dashed border-line-2 p-6 text-center text-sm text-mute">{children}</div>;
 }
 
+export function Skeleton({ className }: { className?: string }) {
+  return <div className={cx("animate-shimmer rounded-md", className)} />;
+}
+
 /** Horizontal meter for 0..1 values. */
 export function Meter({ v, color = "var(--accent)", className }: { v: number; color?: string; className?: string }) {
   return (
