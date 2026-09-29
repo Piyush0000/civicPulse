@@ -58,20 +58,20 @@ export default function Landing() {
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-bg to-transparent" />
         </div>
         <div className="relative mx-auto flex min-h-[640px] max-w-6xl flex-col justify-center px-4 py-16">
-          <div className="max-w-xl">
-            <span className="chip border-accent/40 text-accent"><Sparkles className="h-3 w-3" /> Digital Public Good · Indian Innovation</span>
-            <h1 className="mt-5 text-4xl font-semibold leading-[1.05] tracking-tight md:text-6xl">
+          <div className="max-w-2xl">
+            <span className="chip border-accent/40 text-accent"><Radar className="h-3 w-3" /> Digital Public Good · Indian Innovation</span>
+            <h1 className="mt-8 text-[clamp(2.5rem,5vw,4.5rem)] font-bold leading-[1.05] tracking-tight text-white">
               Every citizen&apos;s voice,
               <br />
-              <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">turned into investment.</span>
+              <span className="text-accent">turned into investment.</span>
             </h1>
-            <p className="mt-5 text-lg text-mute">
+            <p className="mt-6 text-xl text-mute leading-relaxed max-w-xl">
               CivicPulse listens to voice notes, texts, calls and USSD messages in any language, fuses them with population, infrastructure and budget data,
               and tells governments exactly where the next rupee, real, rand, ruble or yuan will do the most good.
             </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link href="/submit" className="btn-primary px-5 py-3 text-base"><Mic className="h-5 w-5" /> Report a problem</Link>
-              <Link href="/app" className="btn-ghost px-5 py-3 text-base">Open planner console <ArrowRight className="h-4 w-4" /></Link>
+            <div className="mt-10 flex flex-wrap gap-4">
+              <Link href="/submit" className="btn-primary px-6 py-3.5 text-base shadow-[0_0_20px_rgba(34,211,238,0.3)]"><Mic className="h-5 w-5" /> Report a problem</Link>
+              <Link href="/app" className="btn-ghost px-6 py-3.5 text-base">Open planner console <ArrowRight className="h-4 w-4" /></Link>
             </div>
             <div className="mt-8 flex flex-wrap gap-2" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
               {REGIONS.map((r, i) => (
@@ -111,44 +111,43 @@ export default function Landing() {
         ))}
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-20">
-        <h2 className="text-3xl font-semibold tracking-tight">From a voice note to a funded project</h2>
-        <div className="mt-8 grid gap-4 md:grid-cols-4">
+      <section className="mx-auto max-w-6xl px-4 py-24">
+        <h2 className="text-[clamp(2rem,3vw,3rem)] font-semibold tracking-tight text-white leading-tight max-w-2xl">From a voice note to a funded project</h2>
+        <div className="mt-12 flex flex-col md:flex-row gap-6">
           {[
-            { i: <Mic className="h-5 w-5" />, t: "Listen", d: "Voice, text, Telegram, IVR calls and USSD on feature phones. Hindi, Marathi, Tamil, Telugu, Bengali, English, even Hinglish." },
-            { i: <BrainCircuit className="h-5 w-5" />, t: "Understand", d: "Speech-to-text, translation, PII redaction and structured extraction with free LLMs (offline rules as fallback). Near-duplicates become one demand signal." },
-            { i: <Radar className="h-5 w-5" />, t: "Fuse & detect", d: "H3 hexagon grid × population × infrastructure gaps × vulnerability × planned budgets. Getis-Ord Gi* hotspots, emerging-outbreak alerts, bias correction." },
-            { i: <Target className="h-5 w-5" />, t: "Decide", d: "Ranked projects with AI policy briefs that cite plan documents and verify every number. Decisions go to a public hash-chained ledger." },
+            { i: <Mic className="h-6 w-6" />, t: "Listen", d: "Voice, text, Telegram, IVR calls and USSD on feature phones. Hindi, Marathi, Tamil, Telugu, Bengali, English, even Hinglish." },
+            { i: <BrainCircuit className="h-6 w-6" />, t: "Understand", d: "Speech-to-text, translation, PII redaction and structured extraction with free LLMs (offline rules as fallback). Near-duplicates become one demand signal." },
+            { i: <Radar className="h-6 w-6" />, t: "Fuse & detect", d: "H3 hexagon grid × population × infrastructure gaps × vulnerability × planned budgets. Getis-Ord Gi* hotspots, emerging-outbreak alerts, bias correction." },
+            { i: <Target className="h-6 w-6" />, t: "Decide", d: "Ranked projects with AI policy briefs that cite plan documents and verify every number. Decisions go to a public hash-chained ledger." },
           ].map((s, n) => (
-            <div key={s.t} className="card relative p-5">
-              <span className="absolute right-4 top-4 font-mono text-xs text-faint">0{n + 1}</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-accent">{s.i}</div>
-              <h3 className="mt-4 text-lg font-medium">{s.t}</h3>
-              <p className="mt-1 text-sm text-mute">{s.d}</p>
+            <div key={s.t} className="card relative p-6 flex-1 bg-panel border-line hover:border-line-2 transition-colors">
+              <span className="absolute right-4 top-4 font-mono text-sm text-faint opacity-50">0{n + 1}</span>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-panel-2 border border-line-2 text-accent shadow-inner">{s.i}</div>
+              <h3 className="mt-6 text-xl font-medium text-white">{s.t}</h3>
+              <p className="mt-3 text-sm text-mute leading-relaxed">{s.d}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pb-20">
-        <h2 className="text-3xl font-semibold tracking-tight">Built for the whole population, not just the connected</h2>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
+      <section className="mx-auto max-w-6xl px-4 pb-24">
+        <h2 className="text-[clamp(2rem,3vw,3rem)] font-semibold tracking-tight text-white leading-tight max-w-2xl">Built for the whole population, not just the connected</h2>
+        <div className="mt-12 grid gap-4 md:grid-cols-12 auto-rows-[minmax(140px,auto)]">
           {[
-            { i: <Smartphone />, t: "USSD for feature phones", d: "Dial *123#: no smartphone, no data plan needed." },
-            { i: <WifiOff />, t: "Offline-first reporting", d: "Reports queue on the device and sync when connectivity returns." },
-            { i: <Languages />, t: "Under-reporting correction", d: "Demand is divided by connectivity so quiet, poor areas are not ignored." },
-            { i: <BrainCircuit />, t: "Ask CivicPulse", d: "A policy copilot that answers only through analytics tools. No invented numbers." },
-            { i: <Calculator />, t: "Budget optimizer", d: "Portfolio that maximises people reached per dollar, with an equity floor." },
-            { i: <Globe2 />, t: "Indian federation", d: "Cities keep their data; they share only k-anonymous, signed aggregates." },
-            { i: <ShieldCheck />, t: "Tamper-evident ledger", d: "Every decision is hash-chained and publicly verifiable." },
-            { i: <Lock />, t: "Privacy by design", d: "HMAC pseudonyms, encrypted contact mapping, PII redaction, retention limits, STOP opt-out." },
-            { i: <Radar />, t: "Foresight", d: "Seasonal forecasts and emerging-hotspot alerts, so cities act before the monsoon, the winter or the outbreak." },
+            { i: <Smartphone />, t: "USSD for feature phones", d: "Dial *123#: no smartphone, no data plan needed.", col: "md:col-span-4" },
+            { i: <WifiOff />, t: "Offline-first reporting", d: "Reports queue on the device and sync when connectivity returns.", col: "md:col-span-4" },
+            { i: <Languages />, t: "Under-reporting correction", d: "Demand is divided by connectivity so quiet, poor areas are not ignored.", col: "md:col-span-4" },
+            { i: <BrainCircuit />, t: "Ask CivicPulse", d: "A policy copilot that answers only through analytics tools. No invented numbers.", col: "md:col-span-6" },
+            { i: <Calculator />, t: "Budget optimizer", d: "Portfolio that maximises people reached per dollar, with an equity floor.", col: "md:col-span-6" },
+            { i: <Globe2 />, t: "Indian federation", d: "Cities keep their data; they share only k-anonymous, signed aggregates.", col: "md:col-span-4" },
+            { i: <ShieldCheck />, t: "Tamper-evident ledger", d: "Every decision is hash-chained and publicly verifiable.", col: "md:col-span-4" },
+            { i: <Radar />, t: "Foresight", d: "Seasonal forecasts and emerging-hotspot alerts, so cities act before the monsoon, the winter or the outbreak.", col: "md:col-span-4" },
           ].map((f) => (
-            <div key={f.t} className="card flex gap-4 p-5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-2/10 text-accent-2 [&>svg]:h-5 [&>svg]:w-5">{f.i}</div>
-              <div>
-                <h3 className="font-medium">{f.t}</h3>
-                <p className="mt-1 text-sm text-mute">{f.d}</p>
+            <div key={f.t} className={cx("card flex flex-col gap-4 p-6 bg-panel hover:bg-panel-2 transition-colors", f.col)}>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-panel-2 border border-line-2 text-ink [&>svg]:h-5 [&>svg]:w-5">{f.i}</div>
+              <div className="mt-auto">
+                <h3 className="text-lg font-medium text-white">{f.t}</h3>
+                <p className="mt-2 text-sm text-mute leading-relaxed">{f.d}</p>
               </div>
             </div>
           ))}
