@@ -119,19 +119,62 @@ body {
 }
 
 /* live pulse ripple */
+:root {
+  --t-fast: 0.35s;
+  --t-slow: 1.6s;
+}
+
 @keyframes cp-ping {
   0% { transform: scale(0.6); opacity: 0.9; }
   100% { transform: scale(2.6); opacity: 0; }
-}
-.cp-ping {
-  animation: cp-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 @keyframes cp-in {
   from { transform: translateY(-6px); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.cp-ping {
+  animation: cp-ping var(--t-slow) cubic-bezier(0, 0, 0.2, 1) infinite;
+}
 .cp-in {
-  animation: cp-in 0.35s ease-out;
+  animation: cp-in var(--t-fast) ease-out;
+}
+.animate-fade-in {
+  animation: fade-in var(--t-fast) ease-out forwards;
+}
+.animate-slide-in-right {
+  animation: slide-in-right var(--t-fast) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.animate-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--panel-2);
+}
+.animate-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-ping, .cp-in, .animate-fade-in, .animate-slide-in-right, .animate-shimmer::after { 
+    animation: none !important; 
+  }
 }
 
 .maplibregl-ctrl-attrib {

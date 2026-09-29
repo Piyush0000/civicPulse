@@ -10,6 +10,49 @@ import {
 import { REGIONS } from "@/lib/regions";
 import { api, RegionProvider, useApi, useInterval, usePulse, useRegion } from "@/lib/client/hooks";
 import { cx } from "./ui";
+import dynamic from "next/dynamic";
+import type { TourStep } from "./ProductTour";
+
+const ProductTour = dynamic(() => import("./ProductTour"), { ssr: false });
+
+const TOUR_STEPS: TourStep[] = [
+  {
+    target: '[data-tour="sidebar-nav"]',
+    title: "Navigation sidebar",
+    description: "Your command centre. Jump between the Live Map, Citizen Requests, AI Copilot, Budget Optimizer, and more. Every section updates in real time.",
+    placement: "right",
+  },
+  {
+    target: '[data-tour="region-switcher"]',
+    title: "Switch pilot regions",
+    description: "CivicPulse runs across multiple cities. Tap a flag to switch context — all KPIs, maps, and recommendations update instantly for that region.",
+    placement: "bottom",
+  },
+  {
+    target: '[data-tour="live-indicator"]',
+    title: "Real-time citizen feed",
+    description: "This dot pulses green when CivicPulse is streaming live citizen reports via SSE. Every new voice note, text, or IVR call appears within seconds.",
+    placement: "bottom",
+  },
+  {
+    target: '[data-tour="nav-map"]',
+    title: "Live Pulse Map",
+    description: "A 3D hexagonal heatmap showing demand density, Redzones (statistically significant clusters of need), and emerging hotspots across the city.",
+    placement: "right",
+  },
+  {
+    target: '[data-tour="nav-copilot"]',
+    title: "Ask CivicPulse (AI Copilot)",
+    description: "Chat with your data. Ask questions like 'Which ward has the worst water access?' and the AI queries your real analytics — no hallucinated numbers.",
+    placement: "right",
+  },
+  {
+    target: '[data-tour="provider-box"]',
+    title: "Free stack status",
+    description: "Monitor which services are active. CivicPulse runs fully offline with zero paid services — AI, database, and real-time are all optional upgrades.",
+    placement: "top",
+  },
+];
 
 type Me = { user: { name: string; email: string; role: string; roleLabel?: string } };
 type Status = {
@@ -67,8 +110,16 @@ function Shell({ children }: { children: ReactNode }) {
     router.push("/login");
   };
 
+  // Map href to data-tour id for tour targeting
+  const tourId = (href: string) => {
+    if (href === "/app/map") return "nav-map";
+    if (href === "/app/copilot") return "nav-copilot";
+    if (href === "/app/recommendations") return "nav-recs";
+    return undefined;
+  };
+
   const nav = (
-    <nav className="flex flex-col gap-0.5 p-3">
+    <nav className="flex flex-col gap-0.5 p-3" data-tour="sidebar-nav">
       {NAV.map((n) => {
         const active = n.href === "/app" ? path === "/app" : path.startsWith(n.href);
         const Icon = n.icon;
@@ -77,6 +128,7 @@ function Shell({ children }: { children: ReactNode }) {
             key={n.href}
             href={n.href}
             onClick={() => setOpen(false)}
+            data-tour={tourId(n.href)}
             className={cx(
               "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
               active ? "bg-accent/10 text-accent" : "text-mute hover:bg-panel-2 hover:text-ink",
@@ -117,7 +169,7 @@ function Shell({ children }: { children: ReactNode }) {
           <button className="p-1 text-mute lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu">
             <Menu className="h-5 w-5" />
           </button>
-          <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-line bg-panel p-1" role="tablist" aria-label="Region">
+          <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-line bg-panel p-1" role="tablist" aria-label="Region" data-tour="region-switcher">
             {REGIONS.map((r) => (
               <button
                 key={r.code}
@@ -135,13 +187,22 @@ function Shell({ children }: { children: ReactNode }) {
             ))}
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <span className="hidden items-center gap-2 text-xs text-mute md:flex" title={live ? "Live stream connected" : "Connecting…"}>
+            <span className="hidden items-center gap-2 text-xs text-mute md:flex" title={live ? "Live stream connected" : "Connecting…"} data-tour="live-indicator">
               <span className="relative flex h-2.5 w-2.5">
                 {live && flash && <span className="cp-ping absolute inline-flex h-full w-full rounded-full bg-accent" />}
                 <span className={cx("relative inline-flex h-2.5 w-2.5 rounded-full", live ? "bg-ok" : "bg-faint")} />
               </span>
               {live ? "Live" : "Offline"}
             </span>
+            <button
+              onClick={() => {
+                localStorage.removeItem("civicpulse_tour_dismissed_v2");
+                window.dispatchEvent(new Event("start-tour"));
+              }}
+              className="rounded-lg border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20 transition-colors"
+            >
+              Start Tour
+            </button>
             {me.data && (
               <div className="flex items-center gap-2">
                 <div className="hidden text-right sm:block">
@@ -162,6 +223,7 @@ function Shell({ children }: { children: ReactNode }) {
           </div>
         )}
         <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
+        <ProductTour steps={TOUR_STEPS} tourId="app-console" />
       </div>
     </div>
   );
@@ -198,7 +260,7 @@ function ProviderBox({ status, aiLive }: { status: Status | null; aiLive: boolea
   if (!status) return null;
   const p = status.providers;
   return (
-    <div className="m-3 rounded-xl border border-line bg-panel-2 p-3 text-[11px] leading-5 text-mute">
+    <div className="m-3 rounded-xl border border-line bg-panel-2 p-3 text-[11px] leading-5 text-mute" data-tour="provider-box">
       <div className="mb-1 font-semibold uppercase tracking-wider text-faint">Free stack</div>
       <Row k="AI" v={aiLive ? p.llm[0].split(":")[0] : "offline rules"} ok={aiLive} />
       <Row k="Voice" v={p.stt[0].startsWith("browser") ? "browser STT" : p.stt[0].split(":")[0]} ok={!p.stt[0].startsWith("browser")} />
