@@ -78,6 +78,8 @@ const CITY_ALIASES: Record<string, string> = {
   kolkata: "IN-WB", কলকাতা: "IN-WB", hyderabad: "IN-TS", హైదరాబాద్: "IN-TS",
 };
 
+// "ok", "thanks", "hi", "theek hai", emoji-only… (whole message, any case)
+export const SMALLTALK = /^(ok(ay)?|k|kk|thanks?|thank you|thx|ty|hi+|hello|hey|good (morning|night|evening)|bye|done|sure|fine|great|nice|cool|theek hai|thik hai|accha|achha|haan|han|ji|dhanyavad|dhanyawad|shukriya|धन्यवाद|शुक्रिया|ठीक है|अच्छा|हाँ|नमस्ते|[\p{Extended_Pictographic}\s!.]+)[\s!.]*$/iu;
 const YES = /^(yes|y|ok|haan|हाँ|हां|ha|हो|होय|ஆம்|అవును|হ্যাঁ)/i;
 
 export async function handleTelegramUpdate(u: TgUpdate): Promise<void> {
@@ -131,6 +133,8 @@ export async function handleTelegramUpdate(u: TgUpdate): Promise<void> {
     await sendTelegram(chatId, t.thanksConsent);
     if (!payload || (!payload.text && !payload.voice)) return;
   }
+  // Acknowledgements and greetings are conversation, not complaints.
+  if (!payload?.voice && SMALLTALK.test((payload?.text ?? "").trim())) return sendTelegram(chatId, t.smalltalk ?? MSG.en.smalltalk!);
   const audio = payload?.voice ? { data: await download(payload.voice), mime: payload.mime ?? "audio/ogg" } : null;
   const res = await intake({
     region: state.region ?? "IN-DL",
@@ -150,11 +154,12 @@ export async function handleTelegramUpdate(u: TgUpdate): Promise<void> {
   await sendTelegram(chatId, t.received(res.trackingCode));
   if (res.duplicate) return;
   await processRequest(res.requestId);
-  const done = await q1<{ category: string; urgency: string; admin_name: string | null; pipeline_status: string; pipeline_error: string | null }>(
-    "SELECT category, urgency, admin_name, pipeline_status, pipeline_error FROM requests WHERE id=$1",
+  const done = await q1<{ category: string; urgency: string; admin_name: string | null; pipeline_status: string; pipeline_error: string | null; is_actionable: boolean }>(
+    "SELECT category, urgency, admin_name, pipeline_status, pipeline_error, is_actionable FROM requests WHERE id=$1",
     [res.requestId],
   );
-  if (done?.pipeline_status === "completed")
+  if (done?.pipeline_status === "completed" && !done.is_actionable) await sendTelegram(chatId, t.notActionable ?? MSG.en.notActionable!);
+  else if (done?.pipeline_status === "completed")
     await sendTelegram(chatId, t.understood(catLabel(done.category, lang), done.urgency, done.admin_name));
   else await sendTelegram(chatId, t.failed);
 }

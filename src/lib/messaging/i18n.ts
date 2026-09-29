@@ -11,6 +11,8 @@ type Msgs = {
   stopped: string;
   gotLocation: string;
   city: (name: string) => string;
+  smalltalk?: string;
+  notActionable?: string;
 };
 
 export const MSG: Record<string, Msgs> = {
@@ -26,6 +28,8 @@ export const MSG: Record<string, Msgs> = {
     stopped: "You have opted out. Your contact details were deleted. Send /start to join again.",
     gotLocation: "📍 Location saved. Now describe the problem (text or voice).",
     city: (n) => `🏙️ City set to ${n}.`,
+    smalltalk: "🙏 You're welcome! To report a problem, describe what is wrong and where (text or voice). Send status CP-XXXXXX to check a complaint.",
+    notActionable: "🤔 I couldn't find a specific civic problem in that message. Please describe what is wrong and where, e.g. \"No water in Dwarka Sector 7 for 3 days\".",
   },
   hi: {
     consent:
@@ -39,6 +43,8 @@ export const MSG: Record<string, Msgs> = {
     stopped: "आपने सदस्यता छोड़ दी है। आपकी संपर्क जानकारी मिटा दी गई।",
     gotLocation: "📍 लोकेशन सहेजी गई। अब समस्या बताएं (टेक्स्ट या आवाज़)।",
     city: (n) => `🏙️ शहर: ${n}`,
+    smalltalk: "🙏 धन्यवाद! समस्या बताने के लिए लिखें या बोलें कि क्या खराब है और कहाँ। स्थिति जानने के लिए भेजें: status CP-XXXXXX",
+    notActionable: "🤔 इस संदेश में कोई नागरिक समस्या नहीं मिली। कृपया बताएं क्या खराब है और कहाँ, जैसे: \"द्वारका सेक्टर 7 में 3 दिन से पानी नहीं\"।",
   },
   pt: {
     consent:

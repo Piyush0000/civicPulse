@@ -195,7 +195,8 @@ export async function processRequest(requestId: string): Promise<void> {
       precision = "exact_pin";
       admin = nearestLocality(region, lat, lng).loc.name;
       log.push({ step: "geocoded", ms: 0, info: "exact pin" });
-    } else {
+    } else if (e.is_actionable && !e.is_spam) {
+      // Only real complaints are geocoded: free text like "ok" must never be matched to a place.
       const hit = await step("geocoded", () => geocode(region.code, e.location_text || `${origFinal} ${engFinal}`), (h) => (h ? `${h.source} → ${h.admin ?? "point"}` : "unlocated"));
       if (hit) {
         lat = hit.lat;
