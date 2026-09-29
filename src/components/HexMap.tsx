@@ -75,6 +75,25 @@ export default function HexMap(props: {
       bearing: props.extruded ? -12 : 0,
       attributionControl: { compact: true },
       interactive: props.interactive !== false,
+      validateStyle: false,
+      transformRequest: (url, resourceType) => {
+        if (url.startsWith("mapbox://")) {
+          const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+          if (url.startsWith("mapbox://styles/")) {
+            url = url.replace("mapbox://styles/", "https://api.mapbox.com/styles/v1/");
+          } else if (url.startsWith("mapbox://sprites/")) {
+            url = url.replace("mapbox://sprites/", "https://api.mapbox.com/styles/v1/");
+            url = url.replace(/(@2x)?\.(png|json)/, (match) => `/sprite${match}`);
+          } else if (url.startsWith("mapbox://fonts/")) {
+            url = url.replace("mapbox://fonts/", "https://api.mapbox.com/fonts/v1/");
+          } else {
+            url = url.replace("mapbox://", "https://api.mapbox.com/v4/");
+            if (!url.includes(".json")) url += ".json";
+          }
+          url += (url.includes("?") ? "&" : "?") + "secure=true&access_token=" + token;
+        }
+        return { url };
+      },
     });
     if (props.interactive !== false) m.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
     const ov = new MapboxOverlay({ interleaved: false, layers: [] });
@@ -154,8 +173,22 @@ export default function HexMap(props: {
         getElevation: (d) => Math.pow(norm(d.v), 2.6) * 3200,
         elevationScale: 1,
         stroked: true,
-        getLineColor: (d) => (d.h === props.selected ? [255, 255, 255, 255] : d.hs ? [255, 90, 120, 230] : d.em ? [253, 224, 71, 220] : [6, 10, 19, 90]),
-        getLineWidth: (d) => (d.h === props.selected ? 3 : d.hs || d.em ? 2 : 0.5),
+        getLineColor: (d) => {
+          if (d.h === props.selected) return [255, 255, 255, 255];
+          const highNeed = norm(d.v) > 0.5;
+          const isRed = d.hs && highNeed;
+          const isWatch = (d.hs && !highNeed) || (!d.hs && highNeed && (d.n ?? 0) < 5) || d.em;
+          if (isRed) return [255, 50, 80, 240];
+          if (isWatch) return [253, 140, 30, 230];
+          return [6, 10, 19, 90];
+        },
+        getLineWidth: (d) => {
+          if (d.h === props.selected) return 3;
+          const highNeed = norm(d.v) > 0.5;
+          const isRed = d.hs && highNeed;
+          const isWatch = (d.hs && !highNeed) || (!d.hs && highNeed && (d.n ?? 0) < 5) || d.em;
+          return isRed || isWatch ? 2 : 0.5;
+        },
         lineWidthUnits: "pixels",
         pickable: true,
         autoHighlight: true,
