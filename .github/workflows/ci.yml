@@ -39,13 +39,28 @@ jobs:
         run: npm test
 
   build-smoke:
-    name: Build · End-to-end smoke test
+    name: Build · End-to-end smoke test (${{ matrix.database }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # pglite = embedded default; postgres = real Postgres, same driver path as Supabase in production.
+        database: [pglite, postgres]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: civicpulse
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       # Offline providers only: CI never calls external AI or messaging services.
       SECRET_KEY: ci-secret-key-not-for-production-0123456789
       PGLITE_DIR: .data/ci-pglite
+      DATABASE_URL: ${{ matrix.database == 'postgres' && 'postgresql://postgres:postgres@localhost:5432/civicpulse' || '' }}
       GEOCODER: offline
       TRANSLATE_FALLBACK: none
     steps:

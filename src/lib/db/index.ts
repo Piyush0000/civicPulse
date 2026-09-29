@@ -68,7 +68,18 @@ async function createPostgres(url: string): Promise<Db> {
     max: 5,
     prepare: false, // Supabase pooler (transaction mode) does not support prepared statements
     idle_timeout: 20,
-    types: { bigint: postgres.BigInt },
+    types: {
+      // Match PGlite: int8 → number (counts and sequences here stay far below 2^53; BigInt would break JSON responses).
+      bigint: { to: 20, from: [20], serialize: (x: unknown) => String(x), parse: (x: string) => Number(x) },
+      // Our SQL passes JSON already stringified (`$1::jsonb`); the default serializer would stringify it again and
+      // store a JSON *string* instead of an object on real Postgres/Supabase.
+      jsonb: {
+        to: 3802,
+        from: [114, 3802],
+        serialize: (x: unknown) => (typeof x === "string" ? x : JSON.stringify(x)),
+        parse: (x: string) => JSON.parse(x),
+      },
+    },
     onnotice: () => undefined,
   });
   type Sql = typeof sql;
