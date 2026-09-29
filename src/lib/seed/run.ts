@@ -32,7 +32,7 @@ type Progress = (msg: string, pct: number) => Promise<void> | void;
 async function setState(value: object) {
   await (await getDb()).query(
     `INSERT INTO app_state (key, value) VALUES ('seed', $1::jsonb)
-     ON CONFLICT (key) DO UPDATE SET value = app_state.value || EXCLUDED.value, updated_at = now()`,
+     ON CONFLICT (key) DO UPDATE SET value = CASE WHEN jsonb_typeof(app_state.value) = 'object' THEN app_state.value || EXCLUDED.value ELSE EXCLUDED.value END, updated_at = now()`,
     [JSON.stringify(value)],
   );
 }
@@ -43,6 +43,7 @@ export async function seedStatus(): Promise<{ status?: string; progress?: number
   );
   // Tolerate a value stored as a JSON string by older builds (double-encoded jsonb).
   const v = row?.value as unknown;
+  if (Array.isArray(v)) return null; // corrupted by an old build: treat as unknown
   if (typeof v === "string") {
     try {
       return JSON.parse(v);
