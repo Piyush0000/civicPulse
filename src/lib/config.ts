@@ -29,6 +29,7 @@ export const config = {
   telegramToken: env("TELEGRAM_BOT_TOKEN"),
   telegramMode: (env("TELEGRAM_MODE") || "polling") as "polling" | "webhook",
   telegramWebhookSecret: env("TELEGRAM_WEBHOOK_SECRET") || "dev-telegram-secret",
+  appUrl: env("APP_URL"), // public https URL of a deployment (used to register the Telegram webhook)
   supabaseUrl: env("NEXT_PUBLIC_SUPABASE_URL"),
   supabaseAnonKey: env("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
   clusterSimThreshold: Number(env("CLUSTER_SIM_THRESHOLD") || 0.8),

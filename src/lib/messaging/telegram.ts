@@ -175,13 +175,25 @@ export function startTelegramPolling() {
   let offset = 0;
   const loop = async () => {
     try {
-      await api("deleteWebhook", {}).catch(() => undefined);
+      // A webhook means a deployed server owns this bot: never take it over from a dev machine.
+      const hook = await api<{ url: string }>("getWebhookInfo", {}).catch(() => ({ url: "" }));
+      if (hook.url) {
+        console.warn("[telegram] a deployed server owns this bot (webhook active): local polling disabled");
+        return;
+      }
       for (;;) {
+        let webhookActive = false;
         const updates = await api<TgUpdate[]>("getUpdates", { offset, timeout: 25, allowed_updates: ["message"] }).catch(async (e) => {
-          console.error("[telegram]", (e as Error).message);
+          const msg = (e as Error).message;
+          if (/webhook is active/i.test(msg)) webhookActive = true;
+          else console.error("[telegram]", msg);
           await new Promise((r) => setTimeout(r, 5000));
           return [] as TgUpdate[];
         });
+        if (webhookActive) {
+          console.warn("[telegram] a deployed server took over this bot (webhook set): local polling stopped");
+          return;
+        }
         for (const u of updates) {
           offset = u.update_id + 1;
           handleTelegramUpdate(u).catch((e) => console.error("[telegram] handler", e));
@@ -193,4 +205,13 @@ export function startTelegramPolling() {
   };
   void loop();
   console.log("[telegram] polling started");
+}
+
+/** Webhook mode: point Telegram at this server (idempotent). Needs a public HTTPS APP_URL. */
+export async function registerTelegramWebhook() {
+  if (!config.telegramToken || config.telegramMode !== "webhook" || !config.appUrl) return;
+  const url = `${config.appUrl.replace(/\/$/, "")}/api/v1/webhooks/telegram/${config.telegramWebhookSecret}`;
+  await api("setWebhook", { url, allowed_updates: ["message"] })
+    .then(() => console.log("[telegram] webhook registered"))
+    .catch((e) => console.error("[telegram] setWebhook failed:", (e as Error).message));
 }

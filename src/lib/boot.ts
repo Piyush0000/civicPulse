@@ -1,6 +1,6 @@
 import { config } from "./config";
 import { q1 } from "./db";
-import { startTelegramPolling } from "./messaging/telegram";
+import { registerTelegramWebhook, startTelegramPolling } from "./messaging/telegram";
 import { resetAll, SEED_VERSION, seedAll, seedStatus } from "./seed/run";
 
 type G = { __cpBooted?: boolean; __cpSeeding?: Promise<void> };
@@ -44,6 +44,7 @@ export async function boot() {
   }
   // Channels start only after a possible reset, so no citizen message can be wiped, and never wait for seeding.
   startTelegramPolling();
+  void registerTelegramWebhook();
   // Retention housekeeping every 12h (serverless deployments call POST /api/v1/admin/retention from a free cron).
   const { retentionCleanup } = await import("./retention");
   const run = () => void retentionCleanup().catch((e) => console.error("[retention]", e));
