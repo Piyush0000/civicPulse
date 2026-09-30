@@ -6,6 +6,7 @@ import { embedText } from "./ai/embed";
 import { extract } from "./ai/extract";
 import { detectLanguage } from "./ai/langdetect";
 import { transcribe, translateToEnglish } from "./ai/speech";
+import { analyzePhoto } from "./ai/vision";
 import { ClusterIndex } from "./analytics/clustering";
 import { recomputeRegion } from "./analytics/engine";
 import { config } from "./config";
@@ -106,8 +107,8 @@ async function setStatus(id: string, status: string, log: LogEntry[], extra: Rec
 
 /** Idempotent pipeline: re-running rewrites the same fields. Failures are recorded on the request. */
 export async function processRequest(requestId: string): Promise<void> {
-  const req = await q1<{ id: string; region_code: string; tracking_code: string; channel: string; reporter_id: string | null; language_detected: string | null; raw_message_id: string }>(
-    "SELECT id, region_code, tracking_code, channel, reporter_id, language_detected, raw_message_id FROM requests WHERE id=$1",
+  const req = await q1<{ id: string; region_code: string; tracking_code: string; channel: string; reporter_id: string | null; language_detected: string | null; raw_message_id: string; photo_url: string | null }>(
+    "SELECT id, region_code, tracking_code, channel, reporter_id, language_detected, raw_message_id, photo_url FROM requests WHERE id=$1",
     [requestId],
   );
   if (!req) return;
@@ -144,7 +145,19 @@ export async function processRequest(requestId: string): Promise<void> {
         sttLang = stt.language;
       } else if (raw.transcript_hint) text = [text, raw.transcript_hint].filter(Boolean).join("\n");
     } else if (!text && raw.transcript_hint) text = raw.transcript_hint;
-    if (!text) throw new Error("No text or transcript available: speech-to-text is not configured on the server.");
+
+    // 1b. evidence photo → vision analysis (compared against the citizen's own words, PII-redacted)
+    if (req.photo_url) {
+      const photo = await step(
+        "photo_analyzed",
+        () => analyzePhoto(req.photo_url!, text ? redactRegex(text) : null),
+        (a) => (a.status === "done" ? `${a.issue_category} / ${a.severity}${a.matches_complaint !== "no_text" ? ` / matches: ${a.matches_complaint}` : ""}` : a.status),
+      );
+      await q("UPDATE requests SET photo_analysis=$2::jsonb WHERE id=$1", [req.id, JSON.stringify(photo)]);
+      // Photo-only report: the photo description becomes the complaint text.
+      if (!text && photo.status === "done" && photo.issue_category !== "none") text = `[Photo report] ${photo.description}`;
+    }
+    if (!text) throw new Error(req.photo_url ? "The photo could not be analysed and no text was given." : "No text or transcript available: speech-to-text is not configured on the server.");
     await setStatus(req.id, "transcribed", log);
 
     // 2. language

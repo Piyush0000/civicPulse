@@ -52,6 +52,8 @@ export async function chat(opts: {
         temperature: opts.temperature ?? 0,
         max_tokens: opts.maxTokens ?? 1500,
       };
+      // gpt-oss models reason before answering; "low" keeps latency close to a plain chat model.
+      if (p.model.startsWith("openai/gpt-oss")) body.reasoning_effort = "low";
       if (opts.json) body.response_format = { type: "json_object" };
       if (opts.tools?.length) {
         body.tools = opts.tools;

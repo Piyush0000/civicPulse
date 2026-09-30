@@ -129,7 +129,8 @@ export async function listRequests(region: string, f: RequestFilters, page: { si
   const [{ n }] = await q<{ n: number }>(`SELECT count(*)::int n FROM requests WHERE ${w}`, params);
   const rows = await q(
     `SELECT id, tracking_code, channel, language_detected, category, subcategory, urgency, summary, admin_name, location_precision,
-            h3_cell, status, pipeline_status, extraction_confidence, submitted_at, is_synthetic, is_spam, is_actionable, cluster_id
+            h3_cell, status, pipeline_status, extraction_confidence, submitted_at, is_synthetic, is_spam, is_actionable, cluster_id,
+            (photo_url IS NOT NULL) has_photo, photo_analysis->>'matches_complaint' photo_match
        FROM requests WHERE ${w} ORDER BY submitted_at DESC LIMIT ${page.size} OFFSET ${page.offset}`,
     params,
   );
@@ -142,7 +143,7 @@ export async function requestDetail(region: string, id: string) {
             r.subcategory, r.urgency, r.urgency_reason, r.summary, r.affected_group, r.estimated_people_affected, r.location_text,
             r.location_precision, r.admin_name, r.lat, r.lng, r.h3_cell, r.cluster_id, r.is_actionable, r.is_spam, r.pipeline_status,
             r.pipeline_error, r.pipeline_log, r.extraction_confidence, r.extraction_provider, r.status, r.analyst_overrides,
-            r.submitted_at, r.processed_at, r.is_synthetic, (m.audio_path IS NOT NULL) has_audio
+            r.submitted_at, r.processed_at, r.is_synthetic, (m.audio_path IS NOT NULL) has_audio, r.photo_url, r.photo_analysis
        FROM requests r LEFT JOIN raw_messages m ON m.id = r.raw_message_id WHERE r.id=$1 AND r.region_code=$2`,
     [id, region],
   );
@@ -157,7 +158,25 @@ export async function requestDetail(region: string, id: string) {
   const cluster = r.cluster_id
     ? await q1("SELECT id, label, request_count, unique_reporter_count, first_seen_at, last_seen_at FROM clusters WHERE id=$1", [r.cluster_id])
     : null;
+  // Which AI vendor analysed the photo is backend-only.
+  const pa = r.photo_analysis as (Record<string, unknown> & { provider?: string }) | null;
+  if (pa) r.photo_analysis = { ...pa, provider: undefined, error: pa.error ? "analysis unavailable" : undefined };
   return { ...r, cluster, siblings };
+}
+
+/** Analyst action: re-run the vision analysis of a request's evidence photo. */
+export async function reanalyzePhoto(region: string, id: string) {
+  const r = await q1<{ photo_url: string | null; text_original_redacted: string | null; text_english_redacted: string | null }>(
+    "SELECT photo_url, text_original_redacted, text_english_redacted FROM requests WHERE id=$1 AND region_code=$2",
+    [id, region],
+  );
+  if (!r) throw new ApiError(404, "not_found", "Request not found");
+  if (!r.photo_url) throw new ApiError(400, "no_photo", "This request has no photo");
+  const { analyzePhoto } = await import("@/lib/ai/vision");
+  const text = r.text_original_redacted?.startsWith("[Photo report]") ? null : r.text_original_redacted || r.text_english_redacted;
+  const a = await analyzePhoto(r.photo_url, text);
+  await q("UPDATE requests SET photo_analysis=$2::jsonb WHERE id=$1", [id, JSON.stringify(a)]);
+  return requestDetail(region, id);
 }
 
 export async function patchRequest(region: string, id: string, body: Record<string, unknown>, s: Session) {

@@ -370,6 +370,9 @@ CREATE TABLE IF NOT EXISTS push_tokens (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- v4: AI analysis of citizen evidence photos (shown to officials next to the complaint)
+ALTER TABLE requests ADD COLUMN IF NOT EXISTS photo_analysis jsonb;
+
 CREATE TABLE IF NOT EXISTS job_runs (
   id bigserial PRIMARY KEY,
   name text NOT NULL,

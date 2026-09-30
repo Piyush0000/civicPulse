@@ -304,7 +304,7 @@ export default function SubmitPage() {
             {t.consent}
           </label>
           {err && <p className="text-sm text-bad">{err}</p>}
-          <button className="btn-primary py-3 text-base" onClick={submit} disabled={busy || !consent || (!text.trim() && !rec && !transcript)}>
+          <button className="btn-primary py-3 text-base" onClick={submit} disabled={busy || !consent || (!text.trim() && !rec && !transcript && !photo)}>
             {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : null} {busy ? t.sending : t.submit}
           </button>
           <p className="text-center text-xs text-faint">{t.privacy}</p>

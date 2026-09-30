@@ -15,7 +15,7 @@ import { seedAll } from "@/lib/seed/run";
 import { DEFAULT_WEIGHTS } from "@/lib/analytics/scoring";
 import { getWeights, recomputeRegion } from "@/lib/analytics/engine";
 import { getRegion, REGION_BY_CODE } from "@/lib/regions";
-import { cellDetail, coarse, listRequests, mapCells, mapLayers, overview, patchRequest, requestDetail } from "./services/dashboard";
+import { cellDetail, coarse, listRequests, mapCells, mapLayers, overview, patchRequest, reanalyzePhoto, requestDetail } from "./services/dashboard";
 import {
   auditLog, bricsCompare, budgetAlignment, decideRecommendation, federationAggregate, forecast, impactProjects, listRecommendations,
   optimize, platformMetrics, previewWeights, recommendationDetail, regenerateBrief, saveWeights,
@@ -132,12 +132,12 @@ pub("POST", "/public/requests", null, "Submit a request (multipart: text?, audio
     if (audio.size > 8 * 1024 * 1024) throw new ApiError(413, "too_large", "Audio must be under 8 MB");
     audioData = { data: Buffer.from(await audio.arrayBuffer()), mime: audio.type || "audio/webm" };
   }
-  if (!text && !audioData && !transcript) throw new ApiError(400, "empty", "Provide text or a voice note");
-
-  // Optional evidence photo, stored separately from the text (never sent to translation/LLMs).
+  // Optional evidence photo. It is analysed by a vision model for officials (never sent to translation).
   const photo = form.get("photo");
+  const hasPhoto = !!photo && typeof photo !== "string" && photo.size > 0;
+  if (!text && !audioData && !transcript && !hasPhoto) throw new ApiError(400, "empty", "Provide text, a voice note or a photo");
   let photoUrl: string | null = null;
-  if (photo && typeof photo !== "string" && photo.size > 0) {
+  if (hasPhoto) {
     if (photo.size > MAX_PHOTO_BYTES) throw new ApiError(413, "too_large", "Photo must be under 8 MB");
     photoUrl = await storePhoto(Buffer.from(await photo.arrayBuffer()), photo.type || "image/jpeg");
   }
@@ -233,6 +233,9 @@ dash("GET", "/requests", "view", "Filterable, paginated request list", async ({ 
 dash("GET", "/requests/:id", "view", "Request detail with cluster siblings", async ({ params, region }) => requestDetail(region(), params.id));
 dash("PATCH", "/requests/:id", "editRequests", "Analyst override: category, urgency, status, pin (audited)", async ({ req, params, region, session }) =>
   patchRequest(region(), params.id, await body(req), session!),
+);
+dash("POST", "/requests/:id/photo-analysis", "editRequests", "Re-run AI analysis of the evidence photo", async ({ params, region }) =>
+  reanalyzePhoto(region(), params.id),
 );
 dash("GET", "/map/cells", "view", "Compact H3 values for a category + metric", async ({ req, region }) =>
   mapCells(region(), req.nextUrl.searchParams.get("category") || "all", req.nextUrl.searchParams.get("metric") || "priority"),

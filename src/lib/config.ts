@@ -18,7 +18,9 @@ export const config = {
   contactKey: env("CONTACT_ENCRYPTION_KEY") || "dev-contact-key-change-me",
   intakeKey: env("INTAKE_API_KEY") || "dev-intake-key",
   groqKey: env("GROQ_API_KEY"),
-  groqModel: env("GROQ_MODEL") || "llama-3.3-70b-versatile",
+  groqModel: env("GROQ_MODEL") || "openai/gpt-oss-120b",
+  groqVisionModel: env("GROQ_VISION_MODEL") || "qwen/qwen3.8-27b",
+  photoAi: env("PHOTO_AI") !== "off", // analyse citizen evidence photos with a vision model
   groqSttModel: env("GROQ_STT_MODEL") || "whisper-large-v3",
   geminiKey: env("GEMINI_API_KEY"),
   geminiModel: env("GEMINI_MODEL") || "gemini-2.5-flash",

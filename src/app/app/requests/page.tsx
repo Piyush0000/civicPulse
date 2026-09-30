@@ -2,7 +2,7 @@
 
 import { useCallback, Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, MapPinOff, Search, X } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight, MapPinOff, RefreshCw, Search, Sparkles, X } from "lucide-react";
 import { CATEGORIES, catLabel } from "@/lib/categories";
 import { api, fmt, timeAgo, useApi, useRegion } from "@/lib/client/hooks";
 import { CatBadge, Empty, ErrorBox, LANG_LABEL, Skeleton, Spinner, StatusBadge, UrgencyBadge, cx } from "@/components/ui";
@@ -10,12 +10,17 @@ import { CatBadge, Empty, ErrorBox, LANG_LABEL, Skeleton, Spinner, StatusBadge, 
 type Row = {
   id: string; tracking_code: string; channel: string; language_detected: string; category: string; subcategory: string; urgency: string; summary: string;
   admin_name: string | null; location_precision: string; status: string; pipeline_status: string; extraction_confidence: number; submitted_at: string;
-  is_synthetic: boolean; is_spam: boolean; is_actionable: boolean;
+  is_synthetic: boolean; is_spam: boolean; is_actionable: boolean; has_photo?: boolean; photo_match?: string | null;
+};
+type PhotoAnalysis = {
+  status: "done" | "failed" | "skipped"; description: string; issue_category: string; severity: string; hazards: string[];
+  matches_complaint: "yes" | "partly" | "no" | "no_text"; match_reason: string; suggested_action: string; people_visible: boolean;
+  confidence: number; analyzed_at: string; error?: string;
 };
 type Detail = Row & {
   text_original_redacted: string; text_english_redacted: string; urgency_reason: string; affected_group: string; location_text: string | null;
   lat: number | null; lng: number | null; h3_cell: string | null; pipeline_log: { step: string; ms: number; info?: string }[]; pipeline_error: string | null;
-  extraction_provider: string; analyst_overrides: Record<string, unknown> | null;
+  extraction_provider: string; analyst_overrides: Record<string, unknown> | null; photo_url: string | null; photo_analysis: PhotoAnalysis | null;
   cluster: { id: string; label: string; request_count: number; unique_reporter_count: number } | null;
   siblings: { id: string; tracking_code: string; language_detected: string; summary: string; urgency: string; submitted_at: string }[];
 };
@@ -177,6 +182,11 @@ function RequestsInner() {
                     <td className="px-4 py-2.5 font-mono text-xs text-mute">
                       {r.tracking_code}
                       {!r.is_synthetic && <span className="ml-1.5 rounded bg-accent/15 px-1 text-[10px] text-accent">LIVE</span>}
+                      {r.has_photo && (
+                        <span title={r.photo_match ? `Photo · AI: ${MATCH[r.photo_match]?.label ?? r.photo_match}` : "Photo attached"} className={cx("ml-1.5 inline-flex align-middle", r.photo_match === "no" ? "text-warn" : "text-mute")}>
+                          <Camera className="h-3.5 w-3.5" aria-label="Photo attached" />
+                        </span>
+                      )}
                     </td>
                     <td className="max-w-[420px] truncate px-2 py-2.5 text-ink">{r.summary ?? <span className="text-faint">processing…</span>}</td>
                     <td className="px-2 py-2.5"><CatBadge c={r.category} /></td>
@@ -248,6 +258,14 @@ function Drawer({ id, region, onClose, onSaved }: { id: string; region: string; 
                 </>
               )}
             </div>
+            {r.photo_url && <PhotoEvidence url={r.photo_url} a={r.photo_analysis} canRerun={!!canEdit} onRerun={async () => {
+              setMsg(null);
+              try {
+                d.setData(await api<Detail>(`/requests/${id}/photo-analysis?region=${region}`, { method: "POST" }));
+              } catch (e) {
+                setMsg((e as Error).message);
+              }
+            }} />}
             <div className="grid grid-cols-2 gap-3 text-sm">
               <Field k="Category"><CatBadge c={r.category} /> <span className="ml-1 text-xs text-mute">{r.subcategory}</span></Field>
               <Field k="Urgency"><UrgencyBadge u={r.urgency} /> <span className="ml-1 text-xs text-mute">{r.urgency_reason}</span></Field>
@@ -317,10 +335,73 @@ function Drawer({ id, region, onClose, onSaved }: { id: string; region: string; 
   );
 }
 
+const MATCH: Record<string, { label: string; cls: string }> = {
+  yes: { label: "Photo supports the complaint", cls: "border-ok/40 bg-ok/10 text-ok" },
+  partly: { label: "Photo partly supports the complaint", cls: "border-warn/40 bg-warn/10 text-warn" },
+  no: { label: "Photo does not match the complaint", cls: "border-bad/40 bg-bad/10 text-bad" },
+  no_text: { label: "Photo-only report", cls: "border-line bg-panel-2 text-mute" },
+};
+
+function PhotoEvidence({ url, a, canRerun, onRerun }: { url: string; a: PhotoAnalysis | null; canRerun: boolean; onRerun: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const rerun = async () => {
+    setBusy(true);
+    await onRerun();
+    setBusy(false);
+  };
+  const m = a?.status === "done" ? MATCH[a.matches_complaint] : undefined;
+  return (
+    <div className="card-2 overflow-hidden">
+      <a href={url} target="_blank" rel="noreferrer" className="block bg-black/30">
+        {/* eslint-disable-next-line @next/next/no-img-element -- user-uploaded evidence, served from our API or Cloudinary */}
+        <img src={url} alt="Citizen evidence photo" className="mx-auto max-h-72 w-full object-contain" />
+      </a>
+      <div className="flex flex-col gap-3 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="label mb-0 flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-accent" /> AI photo analysis</div>
+          {canRerun && (
+            <button onClick={rerun} disabled={busy} className="btn-ghost px-2 py-1 text-xs">
+              <RefreshCw className={cx("h-3.5 w-3.5", busy && "animate-spin")} /> {busy ? "Analysing…" : "Re-analyse"}
+            </button>
+          )}
+        </div>
+        {!a && <p className="text-xs text-faint">Analysis pending…</p>}
+        {a && a.status !== "done" && (
+          <p className="text-xs text-faint">{a.status === "skipped" ? "Photo analysis is switched off on this server." : "The photo could not be analysed automatically."}</p>
+        )}
+        {a?.status === "done" && (
+          <>
+            {m && <div className={cx("rounded-lg border px-2.5 py-1.5 text-xs", m.cls)}><b>{m.label}.</b> {a.match_reason}</div>}
+            <p className="text-sm leading-relaxed text-ink">{a.description}</p>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <Field k="Issue seen">{a.issue_category === "none" ? <span className="text-mute">No civic issue visible</span> : <CatBadge c={a.issue_category} />}</Field>
+              <Field k="Severity seen">{a.severity === "none" ? <span className="text-mute">–</span> : <UrgencyBadge u={a.severity} />}</Field>
+            </div>
+            {a.hazards.length > 0 && (
+              <div>
+                <div className="label">Hazards</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {a.hazards.map((h) => <span key={h} className="rounded-full border border-line px-2 py-0.5 text-xs text-mute">{h}</span>)}
+                </div>
+              </div>
+            )}
+            {a.suggested_action && <Field k="Suggested first action">{a.suggested_action}</Field>}
+            <p className="text-[11px] text-faint">
+              AI confidence {Math.round(a.confidence * 100)}% · analysed {timeAgo(a.analyzed_at)}
+              {a.people_visible && " · people visible: do not share this photo publicly"}. AI output assists officials; verify on site.
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Pipeline trace for officials: show what happened, not which AI vendor did it. */
 function traceInfo(step: string, info?: string): string {
   if (!info) return "";
   if (step === "extracted") return info.split("→").pop()!.trim();
+  if (step === "photo_analyzed") return info.replace(/_/g, " ");
   if (step === "transcribed") return info === "none" ? "no transcript" : "speech converted to text";
   if (step === "translated") return info === "identity" ? "already English" : info === "none" ? "not translated" : "translated to English";
   return info;

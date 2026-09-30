@@ -4,6 +4,7 @@ import { q, q1 } from "../db";
 import { pseudonym } from "../privacy";
 import { intake, processRequest } from "../pipeline";
 import { REGIONS } from "../regions";
+import { MAX_PHOTO_BYTES, storePhoto } from "../photos";
 import { MSG, pickLang } from "./i18n";
 
 // Telegram Bot API (free). Works in long-polling mode locally (no public URL needed) or via webhook.
@@ -15,6 +16,8 @@ type TgUpdate = {
     chat: { id: number };
     from?: { id: number; language_code?: string };
     text?: string;
+    caption?: string;
+    photo?: { file_id: string; width: number; height: number; file_size?: number }[];
     voice?: { file_id: string; mime_type?: string; duration: number };
     audio?: { file_id: string; mime_type?: string };
     location?: { latitude: number; longitude: number };
@@ -44,7 +47,7 @@ async function download(fileId: string): Promise<Buffer> {
   return Buffer.from(await res.arrayBuffer());
 }
 
-type State = { region?: string; consent?: boolean; lang?: string; lat?: number; lng?: number; pending?: { text?: string; voice?: string; mime?: string } };
+type State = { region?: string; consent?: boolean; lang?: string; lat?: number; lng?: number; pending?: { text?: string; voice?: string; mime?: string; photo?: string } };
 
 async function getState(chatId: string): Promise<State> {
   const ph = pseudonym("telegram", chatId);
@@ -90,7 +93,10 @@ export async function handleTelegramUpdate(u: TgUpdate): Promise<void> {
   const lang = state.lang ?? pickLang(m.from?.language_code, m.text);
   state.lang = lang;
   const t = MSG[lang] ?? MSG.en;
-  const text = (m.text ?? "").trim();
+  const text = (m.text ?? m.caption ?? "").trim();
+  // Telegram sends each photo in several sizes (ascending); take the largest one we accept.
+  const photoId = m.photo?.filter((p) => !p.file_size || p.file_size <= MAX_PHOTO_BYTES).pop()?.file_id;
+  const incoming = () => ({ text: m.text ?? m.caption, voice: m.voice?.file_id ?? m.audio?.file_id, mime: m.voice?.mime_type ?? m.audio?.mime_type, photo: photoId });
 
   if (/^\/?stop$/i.test(text)) {
     const ph = pseudonym("telegram", chatId);
@@ -120,22 +126,23 @@ export async function handleTelegramUpdate(u: TgUpdate): Promise<void> {
     return sendTelegram(chatId, t.gotLocation);
   }
   if (text === "/start" || (!state.consent && !YES.test(text))) {
-    if (text !== "/start") state.pending = { text: m.text, voice: m.voice?.file_id ?? m.audio?.file_id, mime: m.voice?.mime_type ?? m.audio?.mime_type };
+    if (text !== "/start") state.pending = incoming();
     await saveState(chatId, state);
     return sendTelegram(chatId, t.consent);
   }
-  let payload: State["pending"] = { text: m.text, voice: m.voice?.file_id ?? m.audio?.file_id, mime: m.voice?.mime_type ?? m.audio?.mime_type };
+  let payload: State["pending"] = incoming();
   if (!state.consent && YES.test(text)) {
     state.consent = true;
     payload = state.pending;
     state.pending = undefined;
     await saveState(chatId, state);
     await sendTelegram(chatId, t.thanksConsent);
-    if (!payload || (!payload.text && !payload.voice)) return;
+    if (!payload || (!payload.text && !payload.voice && !payload.photo)) return;
   }
   // Acknowledgements and greetings are conversation, not complaints.
-  if (!payload?.voice && SMALLTALK.test((payload?.text ?? "").trim())) return sendTelegram(chatId, t.smalltalk ?? MSG.en.smalltalk!);
+  if (!payload?.voice && !payload?.photo && SMALLTALK.test((payload?.text ?? "").trim())) return sendTelegram(chatId, t.smalltalk ?? MSG.en.smalltalk!);
   const audio = payload?.voice ? { data: await download(payload.voice), mime: payload.mime ?? "audio/ogg" } : null;
+  const photoUrl = payload?.photo ? await storePhoto(await download(payload.photo), "image/jpeg").catch(() => null) : null;
   const res = await intake({
     region: state.region ?? "IN-DL",
     channel: "telegram",
@@ -143,6 +150,7 @@ export async function handleTelegramUpdate(u: TgUpdate): Promise<void> {
     externalMessageId: `${chatId}:${m.message_id}`,
     text: payload?.text && !payload.text.startsWith("/") ? payload.text : null,
     audio,
+    photoUrl,
     lat: state.lat ?? null,
     lng: state.lng ?? null,
     language: lang,
