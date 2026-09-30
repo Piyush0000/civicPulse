@@ -1,8 +1,9 @@
 name: Deploy
 
-# Continuous deployment to Vercel (free Hobby plan) after CI passes on main.
-# Opt-in: add repository secrets VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
-# (and set DATABASE_URL etc. in the Vercel project, see docs/DEPLOY.md). Without them this workflow skips.
+# Continuous deployment to the VPS after CI passes on main.
+# GitHub connects with a deploy-only SSH key (repository secret VPS_SSH_KEY). On the server that key is
+# locked to a single forced command (scripts/deploy-vps.sh), so it cannot open a shell or run anything else.
+# The server builds the exact commit CI tested, switches over only on success, and rolls back if unhealthy.
 
 on:
   workflow_run:
@@ -18,41 +19,43 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  VPS_HOST: 75.119.144.199
+  VPS_USER: root
+  # Pinned server host key (public), so the runner never trusts an impostor.
+  VPS_HOST_KEY: 75.119.144.199 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMd1wtwBpm5RO5BGRXCvfPSYdnQR7B1quh5ZVCmUg2N3
+  APP_URL: https://civicpulse.75-119-144-199.sslip.io
+
 jobs:
   deploy:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    environment: production
-    env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    environment:
+      name: production
+      url: https://civicpulse.75-119-144-199.sslip.io
     steps:
-      - name: Check deployment secrets
-        id: gate
+      - name: Deploy to VPS
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
-          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
-            echo "::notice::Vercel secrets not configured; skipping deployment (see docs/DEPLOY.md)."
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          if [ -z "$SSH_KEY" ]; then
+            echo "::notice::VPS_SSH_KEY secret not set; skipping deployment (see docs/DEPLOY.md)."
+            exit 0
           fi
-      - uses: actions/checkout@v4
-        if: steps.gate.outputs.enabled == 'true'
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - uses: actions/setup-node@v4
-        if: steps.gate.outputs.enabled == 'true'
-        with:
-          node-version: 22
-          cache: npm
-      - name: Pull Vercel project settings
-        if: steps.gate.outputs.enabled == 'true'
-        run: npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
-      - name: Build
-        if: steps.gate.outputs.enabled == 'true'
-        run: npx --yes vercel@latest build --prod --token="$VERCEL_TOKEN"
-      - name: Deploy
-        if: steps.gate.outputs.enabled == 'true'
-        run: npx --yes vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "$VPS_HOST_KEY" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+            "$VPS_USER@$VPS_HOST" "$SHA"
+
+      - name: Public health check
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS "$APP_URL/api/v1/health"; then echo; exit 0; fi
+            sleep 5
+          done
+          echo "::error::$APP_URL is not healthy after deploy"
+          exit 1

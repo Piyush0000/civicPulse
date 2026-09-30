@@ -13,6 +13,16 @@ npm start          # http://localhost:3000, embedded PGlite in .data/
 Any machine with Node 20+ works: a ministry server, a Raspberry Pi 5, a cloud VM free tier.
 For a public URL without opening ports, use a free Cloudflare Tunnel (`cloudflared tunnel --url http://localhost:3000`).
 
+## A2. VPS with auto-deploy (what the live demo uses)
+
+Any Ubuntu VPS with Node 20+, nginx, pm2 and certbot. Layout under `/var/www/civicpulse`:
+`shared/.env.local` (secrets), `releases/<sha>/` (one build per deploy, last 3 kept), `current -> releases/<sha>` (served by pm2 on 127.0.0.1:3100 behind nginx + Let's Encrypt).
+
+- `scripts/deploy-vps.sh` is installed as `/usr/local/bin/civicpulse-deploy`. It builds a commit next to the live release, flips `current` only after a successful build, restarts pm2, health-checks, and rolls back if the new release is unhealthy. Run it by hand to deploy the latest `main`.
+- On the VPS set `TELEGRAM_MODE=webhook` and `APP_URL=https://<your-host>`: the bot registers its webhook on boot, and dev machines polling the same token back off automatically.
+- GitHub Actions connects with a deploy-only key whose `authorized_keys` line forces that one command:
+  `command="/usr/local/bin/civicpulse-deploy",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA… github-actions-civicpulse-deploy`
+
 ## B. Vercel (free Hobby) + Supabase (free)
 
 1. **Supabase**: create a free project.
@@ -40,6 +50,6 @@ No personal data crosses borders.
 - **`CI`** (`.github/workflows/ci.yml`) runs on every push to `main`, every PR, and on demand. It has two parallel jobs:
   - *Typecheck · Lint · Unit tests*: `npm run typecheck` (runs `next typegen` first, because Next 16 route types live in the gitignored `.next/types`), `npm run lint` (zero warnings allowed), `npm test`.
   - *Build · End-to-end smoke test*: `npm run build`, `npm start`, then `npm run smoke`. The smoke test waits for the demo world to seed and checks portals, RBAC, the AI pipeline, analytics, what-if and the ledger. It uses offline providers only.
-- **`Deploy`** (`.github/workflows/deploy.yml`) runs after a green CI on `main` and deploys to Vercel. It is **opt-in**: add repository secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (from `npx vercel link` → `.vercel/project.json`). Without them it logs a notice and skips.
+- **`Deploy`** (`.github/workflows/deploy.yml`) runs after a green CI on `main`: it SSHes to the VPS with the deploy-only key (repository secret `VPS_SSH_KEY`, host key pinned in the workflow), deploys the exact commit CI tested, then checks the public health endpoint. Without the secret it logs a notice and skips.
 
 Run the same checks locally with `npm run ci`, and the smoke test against a running server with `npm run smoke`.
